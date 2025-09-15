@@ -7,10 +7,11 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class UserRegisterDTO {
-    private String id;
+    private String userId;
     private String pw;
     private String name;
     private String tel;
-    private boolean permission; // 사용자 0, 관리자 1
+    private int permission; // 사용자 0, 관리자 1
     private String email;
+
 }

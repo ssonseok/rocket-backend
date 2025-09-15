@@ -16,27 +16,27 @@ public class UserServiceImpl implements UserService {
     private final ModelMapper modelMapper;
 
     @Override
-    public User registerUser(UserRegisterDTO dto) throws Exception {
-
-        // ID 중복 체크
-        if(userRepository.existsById(dto.getId())) {
-            throw new Exception("이미 존재하는 ID입니다.");
+    public String registerUser(UserRegisterDTO dto) {
+        // ID 중복
+        if(userRepository.existsById(dto.getUserId())) {
+            return "duplicateId";
         }
-
-        // 이메일 중복 체크
+        // 이메일 중복
         if(userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new Exception("이미 존재하는 이메일입니다.");
+            return "duplicateEmail";
         }
-
-        // 전화번호 중복 체크
+        // 전화번호 중복
         if(userRepository.findByTel(dto.getTel()).isPresent()) {
-            throw new Exception("이미 존재하는 전화번호입니다.");
+            return "duplicateTel";
         }
 
-        // DTO → Entity 변환
+        // 중복 없으면 저장
         User user = modelMapper.map(dto, User.class);
+        user.setUser_id(dto.getUserId()); // 반드시 ID 세팅
+        user.setPermission((byte) dto.getPermission());
+        userRepository.save(user);
 
-        // 비밀번호는 그대로 저장 (나중에 Security 적용 예정)
-        return userRepository.save(user);
+        return "success";
     }
 }
+

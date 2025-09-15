@@ -1,0 +1,28 @@
+package shop.mit301.rocket.domain;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "unit")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Unit {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(nullable = false)
+    private int unit_id;
+
+    @Column(nullable = true, length = 255)
+    private String unit;
+
+    @OneToMany(mappedBy = "unit")
+    private List<DeviceData> device_data_list = new ArrayList<>();
+}
