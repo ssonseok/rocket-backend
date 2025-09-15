@@ -19,7 +19,7 @@ public class UserController {
     @GetMapping("/layout-static.html")
     public void layout() {}
 
-    @GetMapping("/changePw.html")
+    @GetMapping("/password.html")
     public void password() {}
 
     @GetMapping("/register.html")

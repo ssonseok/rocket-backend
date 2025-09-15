@@ -12,7 +12,6 @@ import shop.mit301.rocket.service.UserServiceImpl;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
@@ -40,30 +39,6 @@ public class DeviceController {
 
         response.put("status", "success");
         response.put("message", "아이디가 이메일로 전송되었습니다.");
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/changePw")
-    public ResponseEntity<Map<String, String>> changePassword(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        String userId = request.get("userId");
-
-        Map<String, String> response = new HashMap<>();
-
-        // username(아이디) + email이 정확히 일치하는 사용자만 조회
-        Optional<User> optionalUser = userRepository.findByUseridAndEmail(userId, email);
-
-        if (optionalUser.isEmpty()) {
-            response.put("message", "일치하는 사용자 정보가 없습니다.");
-            return ResponseEntity.status(404).body(response);
-        }
-
-        User user = optionalUser.get();
-
-        // 이메일 전송 서비스 호출
-        userService.sendPasswordResetLink(user.getEmail());
-
-        response.put("message", "이메일로 비밀번호 변경 링크가 전송되었습니다.");
         return ResponseEntity.ok(response);
     }
 }

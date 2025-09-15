@@ -16,8 +16,8 @@ import java.util.List;
 public class User {
 
     @Id
-    @Column(nullable = false, length = 255, name = "user_id")
-    private String userid;
+    @Column(nullable = false, length = 255)
+    private String user_id;
 
     @Column(nullable = false, length = 255)
     private String pw;
