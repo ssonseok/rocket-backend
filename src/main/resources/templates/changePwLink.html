@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <title>비밀번호 재설정</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; }
+        label, input { display: block; width: 100%; margin-bottom: 15px; }
+        input[type="password"] { padding: 8px; font-size: 16px; }
+        button { padding: 10px 20px; font-size: 16px; }
+        #message { margin-top: 20px; }
+    </style>
+</head>
+<body>
+<h2>비밀번호 재설정</h2>
+<form id="resetForm" onsubmit="return false;">
+    <label for="newPw">새 비밀번호</label>
+    <input type="password" id="newPw" placeholder="새 비밀번호를 입력하세요" required />
+    <label for="confirmPw">비밀번호 확인</label>
+    <input type="password" id="confirmPw" placeholder="비밀번호를 다시 입력하세요" required />
+    <button type="submit">비밀번호 변경</button>
+</form>
+<div id="message"></div>
+
+<script>
+    // URL에서 token 파싱 함수
+    function getTokenFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('token');
+    }
+
+    const resetForm = document.getElementById('resetForm');
+    const messageDiv = document.getElementById('message');
+
+    resetForm.addEventListener('submit', async () => {
+        const token = getTokenFromURL();
+        const newPw = document.getElementById('newPw').value.trim();
+        const confirmPw = document.getElementById('confirmPw').value.trim();
+
+        if (!token) {
+            messageDiv.textContent = "유효하지 않은 링크입니다.";
+            messageDiv.style.color = "red";
+            return;
+        }
+
+        if (!newPw || !confirmPw) {
+            messageDiv.textContent = "비밀번호를 입력하세요.";
+            messageDiv.style.color = "red";
+            return;
+        }
+
+        if (newPw !== confirmPw) {
+            messageDiv.textContent = "비밀번호가 일치하지 않습니다.";
+            messageDiv.style.color = "red";
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/changePwLink', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, newPw })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.status === 'success') {
+                messageDiv.textContent = data.message;
+                messageDiv.style.color = 'green';
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+            } else {
+                messageDiv.textContent = data.message || "비밀번호 변경에 실패했습니다.";
+                messageDiv.style.color = 'red';
+            }
+        } catch (error) {
+            messageDiv.textContent = "서버 오류가 발생했습니다.";
+            messageDiv.style.color = "red";
+            console.error(error);
+        }
+    });
+</script>
+</body>
+</html>
