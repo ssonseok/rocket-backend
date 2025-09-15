@@ -1,4 +1,4 @@
-package shop.mit301.rocket.entity;
+package shop.mit301.rocket.domain;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -14,23 +14,23 @@ import java.util.Objects;
 public class User_has_DeviceDataId {
 
     @Column(name = "user_id")
-    private String userId;
+    private String user_id;
 
-    @Column(name = "devicedata_id")
-    private Integer deviceDataId;
+    @Column(name = "device_data_id")
+    private Integer device_data_id;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof User_has_DeviceDataId)) return false;
         User_has_DeviceDataId that = (User_has_DeviceDataId) o;
-        return Objects.equals(userId, that.userId) &&
-                Objects.equals(deviceDataId, that.deviceDataId);
+        return Objects.equals(user_id, that.user_id) &&
+                Objects.equals(device_data_id, that.device_data_id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userId, deviceDataId);
+        return Objects.hash(user_id, device_data_id);
     }
 
 }

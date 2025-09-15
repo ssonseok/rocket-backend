@@ -1,4 +1,4 @@
-package shop.mit301.rocket.entity;
+package shop.mit301.rocket.domain;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -17,12 +17,12 @@ public class Unit {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "unit_id", nullable = false)
-    private int unit_ID;
+    @Column(nullable = false)
+    private int unit_id;
 
     @Column(nullable = true, length = 255)
     private String unit;
 
     @OneToMany(mappedBy = "unit")
-    private List<DeviceData> deviceDataList = new ArrayList<>();
+    private List<DeviceData> device_data_list = new ArrayList<>();
 }

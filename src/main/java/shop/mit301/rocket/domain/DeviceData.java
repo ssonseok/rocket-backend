@@ -1,4 +1,4 @@
-package shop.mit301.rocket.entity;
+package shop.mit301.rocket.domain;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "devicedata")
+@Table(name = "device_data")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,8 +17,8 @@ public class DeviceData {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "devicedata_id", nullable = false)
-    private int deviceData_ID;
+    @Column(nullable = false)
+    private int device_data_id;
 
     @Column(nullable = false)
     private double min;
@@ -26,8 +26,8 @@ public class DeviceData {
     @Column(nullable = false)
     private double max;
 
-    @Column(name = "referencevalue", nullable = false)
-    private double referenceValue;
+    @Column(nullable = false)
+    private double reference_value;
 
     @Column(nullable = false, length = 255)
     private String name;
@@ -37,12 +37,12 @@ public class DeviceData {
     private Unit unit;
 
     @ManyToOne
-    @JoinColumn(name = "device_serialnumber", nullable = false)
+    @JoinColumn(name = "device_serial_number", nullable = false)
     private Device device;
 
-    @OneToMany(mappedBy = "devicedata")
-    private List<MeasurementData> measurementDataList = new ArrayList<>();
+    @OneToMany(mappedBy = "device_data")
+    private List<MeasurementData> measurement_data_list = new ArrayList<>();
 
-    @OneToMany(mappedBy = "deviceData")
-    private List<User_has_DeviceData> userDeviceDataList = new ArrayList<>();
+    @OneToMany(mappedBy = "device_data")
+    private List<User_has_DeviceData> user_device_data_list = new ArrayList<>();
 }

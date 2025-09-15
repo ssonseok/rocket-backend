@@ -1,4 +1,4 @@
-package shop.mit301.rocket.entity;
+package shop.mit301.rocket.domain;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -17,8 +17,8 @@ import java.util.List;
 public class Device {
 
     @Id
-    @Column(name = "device_serialnumber", nullable = false, length = 8, columnDefinition = "CHAR(8)")
-    private String device_SerialNumber;
+    @Column(nullable = false, length = 8, columnDefinition = "CHAR(8)")
+    private String device_serial_number;
 
     @Column(nullable = false)
     private int port;
@@ -29,12 +29,12 @@ public class Device {
     @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(name = "registdate", nullable = false)
-    private LocalDateTime registDate;
+    @Column(nullable = false)
+    private LocalDateTime regist_date;
 
-    @Column(name = "modifydate", nullable = true)
-    private LocalDateTime modifyDate;
+    @Column(nullable = true)
+    private LocalDateTime modify_date;
 
     @OneToMany(mappedBy = "device")
-    private List<DeviceData> deviceDataList = new ArrayList<>();
+    private List<DeviceData> device_data_list = new ArrayList<>();
 }

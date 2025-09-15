@@ -1,4 +1,4 @@
-    package shop.mit301.rocket.entity;
+    package shop.mit301.rocket.domain;
 
     import jakarta.persistence.*;
     import lombok.AllArgsConstructor;
@@ -6,7 +6,7 @@
     import lombok.NoArgsConstructor;
 
     @Entity
-    @Table(name = "user_has_devicedata")
+    @Table(name = "user_has_device_data")
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -16,13 +16,13 @@
         private User_has_DeviceDataId id;
 
         @ManyToOne
-        @MapsId("userId")
+        @MapsId("user_id")
         @JoinColumn(name = "user_id")
         private User user;
 
         @ManyToOne
-        @MapsId("deviceDataId")
-        @JoinColumn(name = "devicedata_id")
-        private DeviceData deviceData;
+        @MapsId("device_data_id")
+        @JoinColumn(name = "device_data_id")
+        private DeviceData device_data;
 
     }
