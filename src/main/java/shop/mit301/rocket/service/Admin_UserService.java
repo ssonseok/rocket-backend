@@ -1,13 +1,7 @@
 package shop.mit301.rocket.service;
 
-
-import shop.mit301.rocket.domain.User;
 import shop.mit301.rocket.dto.UserRegisterDTO;
 
-public interface UserService {
+public interface Admin_UserService {
     String registerUser(UserRegisterDTO dto);
-
 }
-
-
-

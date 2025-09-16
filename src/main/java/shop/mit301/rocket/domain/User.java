@@ -34,4 +34,7 @@ public class User {
 
     @OneToMany(mappedBy = "user")
     private List<User_has_DeviceData> user_device_data_list = new ArrayList<>();
+
+    @OneToOne
+    private PasswordResetToken passwordResetToken;
 }

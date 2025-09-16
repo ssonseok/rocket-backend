@@ -11,7 +11,6 @@ import java.util.Objects;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class MeasurementDataId implements Serializable {
 
     @Column(nullable = false)

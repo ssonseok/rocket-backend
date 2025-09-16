@@ -9,7 +9,6 @@ import java.util.Objects;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class User_has_DeviceDataId {
 
     @Column(name = "user_id")

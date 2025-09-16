@@ -12,21 +12,14 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class PasswordResetToken {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String token;
 
-    @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(nullable = false, name = "user_id")
+    @OneToOne
     private User user;
 
     private LocalDateTime expiryDate;
-
-    // 토큰 만료 확인 메서드 예시
-    public boolean isExpired() {
-        return expiryDate.isBefore(LocalDateTime.now());
-    }
 }

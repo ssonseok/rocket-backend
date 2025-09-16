@@ -1,36 +1,30 @@
 package shop.mit301.rocket.service;
 
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.User;
 import shop.mit301.rocket.dto.UserRegisterDTO;
-import shop.mit301.rocket.repository.UserRepository;
-
-import shop.mit301.rocket.service.UserService;
-import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
-import org.springframework.stereotype.Service;
-import java.util.UUID;
+import shop.mit301.rocket.repository.Admin_UserRepository;
 
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
+public class Admin_UserServiceImpl implements Admin_UserService {
 
-    private final UserRepository userRepository;
+    private final Admin_UserRepository adminUserRepository;
 
     @Override
     public String registerUser(UserRegisterDTO dto) {
 
         // ID 중복 체크
-        if(userRepository.existsById(dto.getUserId())) {
+        if(adminUserRepository.existsById(dto.getUserId())) {
             return "duplicateId";
         }
         // 이메일 중복 체크
-        if(userRepository.findByEmail(dto.getEmail()).isPresent()) {
+        if(adminUserRepository.findByEmail(dto.getEmail()).isPresent()) {
             return "duplicateEmail";
         }
         // 전화번호 중복 체크
-        if(userRepository.findByTel(dto.getTel()).isPresent()) {
+        if(adminUserRepository.findByTel(dto.getTel()).isPresent()) {
             return "duplicateTel";
         }
 
@@ -44,10 +38,9 @@ public class UserServiceImpl implements UserService {
                 .permission((byte) dto.getPermission())
                 .build();
 
-        userRepository.save(user);
+        adminUserRepository.save(user);
 
         return "success";
     }
-
 }
 

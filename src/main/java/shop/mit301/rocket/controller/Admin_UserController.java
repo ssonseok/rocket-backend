@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import shop.mit301.rocket.dto.UserRegisterDTO;
-import shop.mit301.rocket.service.UserService;
+import shop.mit301.rocket.service.Admin_UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,9 +19,10 @@ import java.util.Map;
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
 @Tag(name = "User", description = "회원 관련 API")
-public class UserController {
+public class Admin_UserController {
 
-    private final UserService userService;
+    private final Admin_UserService adminUserService;
+
 
     @Operation(summary = "회원 등록", description = "회원 정보 등록 및 중복 체크")
     @ApiResponses({
@@ -29,12 +30,10 @@ public class UserController {
             @ApiResponse(responseCode = "400", description = "실패", content = @Content(schema = @Schema(implementation = Map.class)))
     })
 
-
-
     //회원등록
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> registerUser(@RequestBody UserRegisterDTO dto) {
-        String result = userService.registerUser(dto);
+        String result = adminUserService.registerUser(dto);
 
         Map<String, String> response = new HashMap<>();
         if("success".equals(result)) {
