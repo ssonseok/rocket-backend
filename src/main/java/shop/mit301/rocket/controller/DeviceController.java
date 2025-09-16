@@ -1,1 +1,113 @@
+package shop.mit301.rocket.controller;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import shop.mit301.rocket.domain.PasswordResetToken;
+import shop.mit301.rocket.domain.User;
+import shop.mit301.rocket.repository.PasswordResetTokenRepository;
+import shop.mit301.rocket.repository.UserRepository;
+import shop.mit301.rocket.service.UserServiceImpl;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+public class DeviceController {
+
+    private final UserRepository userRepository;
+    private final UserServiceImpl userService;
+    private final PasswordResetTokenRepository tokenRepository;
+
+    @PostMapping("/findid")
+    public ResponseEntity<Map<String, String>> findIdByEmail(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        Map<String, String> response = new HashMap<>();
+
+        var userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) {
+            response.put("status", "fail");
+            response.put("message", "해당 이메일로 등록된 사용자가 없습니다.");
+            return ResponseEntity.status(404).body(response);
+        }
+
+        User user = userOptional.get();
+
+        userService.sendUserId(user.getEmail());  // 인스턴스 메서드 호출
+
+        response.put("status", "success");
+        response.put("message", "아이디가 이메일로 전송되었습니다.");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/changePw")
+    public ResponseEntity<Map<String, String>> changePassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String userId = request.get("userId");
+
+        Map<String, String> response = new HashMap<>();
+
+        // username(아이디) + email이 정확히 일치하는 사용자만 조회
+        Optional<User> optionalUser = userRepository.findByUseridAndEmail(userId, email);
+
+        if (optionalUser.isEmpty()) {
+            response.put("message", "일치하는 사용자 정보가 없습니다.");
+            return ResponseEntity.status(404).body(response);
+        }
+
+        User user = optionalUser.get();
+
+        // 이메일 전송 서비스 호출
+        userService.sendPasswordResetLink(user.getEmail());
+
+        response.put("message", "이메일로 비밀번호 변경 링크가 전송되었습니다.");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/changePwLink")
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
+        String token = request.get("token");
+        String newPw = request.get("newPw");
+        Map<String, String> response = new HashMap<>();
+
+        if (token == null || newPw == null) {
+            response.put("status", "fail");
+            response.put("message", "잘못된 요청입니다.");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        Optional<PasswordResetToken> prtOptional = tokenRepository.findByToken(token);
+
+        if (prtOptional.isEmpty()) {
+            response.put("status", "fail");
+            response.put("message", "유효하지 않은 토큰입니다.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        PasswordResetToken prt = prtOptional.get();
+
+        if (prt.isExpired()) {
+            response.put("status", "fail");
+            response.put("message", "토큰이 만료되었습니다.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        User user = prt.getUser();
+        user.setPw(newPw); // 인코딩 필요 없으면 바로 저장
+        userRepository.save(user);
+
+        tokenRepository.delete(prt); // 토큰 사용 후 삭제
+
+        response.put("status", "success");
+        response.put("message", "비밀번호가 성공적으로 변경되었습니다.");
+        return ResponseEntity.ok(response);
+    }
+
+}

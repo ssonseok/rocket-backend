@@ -2,8 +2,6 @@ package shop.mit301.rocket.repository;
 
 import shop.mit301.rocket.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaRepository;
-import shop.mit301.rocket.domain.User;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, String> {
@@ -13,6 +11,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     // 전화번호 중복 체크용
     Optional<User> findByTel(String tel);
 
-
+    Optional<User> findByUseridAndEmail(String userid, String email);
 }
 

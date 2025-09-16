@@ -62,7 +62,7 @@ public class UserRegisterTest {
         // 먼저 DB에 동일한 userId 넣기
         userRepository.save(
                 shop.mit301.rocket.domain.User.builder()
-                        .user_id("testuser4")
+                        .userid("testuser4")
                         .pw("1234")
                         .name("임꺽정")
                         .email("test4@test.com")
