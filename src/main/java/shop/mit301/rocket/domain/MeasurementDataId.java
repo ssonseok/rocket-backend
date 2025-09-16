@@ -8,9 +8,10 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Embeddable
-@Data
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class MeasurementDataId implements Serializable {
 
     @Column(nullable = false)

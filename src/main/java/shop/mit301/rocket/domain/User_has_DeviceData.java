@@ -1,15 +1,14 @@
     package shop.mit301.rocket.domain;
 
     import jakarta.persistence.*;
-    import lombok.AllArgsConstructor;
-    import lombok.Data;
-    import lombok.NoArgsConstructor;
+    import lombok.*;
 
     @Entity
     @Table(name = "user_has_device_data")
-    @Data
+    @Getter
     @NoArgsConstructor
     @AllArgsConstructor
+    @Builder
     public class User_has_DeviceData {
 
         @EmbeddedId

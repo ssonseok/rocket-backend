@@ -1,16 +1,15 @@
 package shop.mit301.rocket.domain;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Objects;
 
 @Embeddable
-@Data
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class User_has_DeviceDataId {
 
     @Column(name = "user_id")

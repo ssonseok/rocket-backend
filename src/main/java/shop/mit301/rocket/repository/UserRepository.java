@@ -11,6 +11,5 @@ public interface UserRepository extends JpaRepository<User, String> {
     // 전화번호 중복 체크용
     Optional<User> findByTel(String tel);
 
-    Optional<User> findByUseridAndEmail(String userid, String email);
 }
 
