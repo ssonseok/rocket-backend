@@ -4,9 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import shop.mit301.rocket.domain.PasswordResetToken;
 import shop.mit301.rocket.domain.User;
+import shop.mit301.rocket.dto.UserDTO;
+import shop.mit301.rocket.repository.PasswordResetTokenRepository;
 import shop.mit301.rocket.repository.UserRepository;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 
@@ -16,32 +20,40 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
+    private final PasswordResetTokenRepository tokenRepository;
+    private final EmailService emailService;
 
-    @Override
-    public void sendUserId(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("해당 이메일을 가진 사용자가 없습니다."));
+    public void sendUserId(UserDTO userDTO) {
+        String email = userDTO.getEmail();
+        String userId = userDTO.getUserid();  // 아이디 포함되어 있다고 가정
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("아이디 찾기 결과");
-        message.setText("당신의 아이디는: " + user.getName());
+        String subject = "[로켓샵] 아이디 찾기 결과 안내";
+        String text = "회원님의 아이디는 다음과 같습니다:\n\n" +
+                "아이디: " + userId + "\n\n" +
+                "감사합니다.";
 
-        mailSender.send(message);
+        emailService.send(email, subject, text);
     }
 
     @Override
-    public void sendPasswordResetLink(String email) {
-        String resetToken = UUID.randomUUID().toString();
-        String link = "https://rocket.mit301.shop/changePw.html?token=" + resetToken;
-        String subject = "비밀번호 재설정 링크";
-        String body = "다음 링크를 클릭하여 비밀번호를 재설정하세요:\n" + link;
+    public void sendPasswordResetLink(UserDTO userDTO) {
+        String token = UUID.randomUUID().toString();
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject(subject);
-        message.setText(body);
+        User user = userRepository.findById(userDTO.getUserid()).orElseThrow();
 
-        mailSender.send(message);
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setUser(user);
+        resetToken.setExpiryDate(LocalDateTime.now().plusHours(1));
+
+        tokenRepository.save(resetToken);
+
+        String resetLink = "http://your-frontend-url.com/changePwLink?token=" + token;
+
+        emailService.send(
+                user.getEmail(),
+                "[로켓샵] 비밀번호 재설정 링크",
+                "아래 링크를 클릭하여 비밀번호를 재설정하세요:\n" + resetLink
+        );
     }
 }
