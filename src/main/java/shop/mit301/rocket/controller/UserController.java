@@ -69,7 +69,7 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/api/changePwLink")
+    @PostMapping("/changePwLink")
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
         String token = request.get("token");
         String newPw = request.get("newPw");
