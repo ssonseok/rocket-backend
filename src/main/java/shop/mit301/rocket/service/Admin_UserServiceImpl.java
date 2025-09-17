@@ -3,8 +3,13 @@ package shop.mit301.rocket.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.User;
+import shop.mit301.rocket.dto.Admin_UserListDTO;
+import shop.mit301.rocket.dto.Admin_UserModifyDTO;
 import shop.mit301.rocket.dto.UserRegisterDTO;
 import shop.mit301.rocket.repository.Admin_UserRepository;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -12,6 +17,7 @@ public class Admin_UserServiceImpl implements Admin_UserService {
 
     private final Admin_UserRepository adminUserRepository;
 
+    //회원등록
     @Override
     public String registerUser(UserRegisterDTO dto) {
 
@@ -41,6 +47,27 @@ public class Admin_UserServiceImpl implements Admin_UserService {
         adminUserRepository.save(user);
 
         return "success";
+    }
+
+    //회원목록
+    @Override
+    public List<Admin_UserListDTO> getAllUsers() {
+        List<User> users = adminUserRepository.findAll();
+
+
+        return users.stream()
+                .map(user -> Admin_UserListDTO.builder()
+                        .userId(user.getUserid())
+                        .name(user.getName())
+                        .tel(user.getTel())
+                        .email(user.getEmail())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public String modifyUser(Admin_UserModifyDTO dto) {
+        return "";
     }
 }
 
