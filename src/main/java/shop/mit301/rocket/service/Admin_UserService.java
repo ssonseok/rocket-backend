@@ -9,9 +9,13 @@ import java.util.List;
 public interface Admin_UserService {
     //회원등록
     String registerUser(UserRegisterDTO dto);
+
     //회원목록
     List<Admin_UserListDTO> getAllUsers();
-    //회원수정
+
+    //회원수정(조회용 id와 정보 수정)
+    Admin_UserModifyDTO getUserById(String userId);
     String modifyUser(Admin_UserModifyDTO dto);
+
 
 }

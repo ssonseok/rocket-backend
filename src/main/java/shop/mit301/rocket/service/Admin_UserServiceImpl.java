@@ -1,6 +1,7 @@
 package shop.mit301.rocket.service;
 
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.User;
 import shop.mit301.rocket.dto.Admin_UserListDTO;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 public class Admin_UserServiceImpl implements Admin_UserService {
 
     private final Admin_UserRepository adminUserRepository;
+    private final ModelMapper modelMapper;
 
     //회원등록
     @Override
@@ -65,9 +67,43 @@ public class Admin_UserServiceImpl implements Admin_UserService {
                 .collect(Collectors.toList());
     }
 
+    //회원수정
+    //1.수정화면에 기존 정보 조회
+    @Override
+    public Admin_UserModifyDTO getUserById(String userId) {
+        User user = adminUserRepository.findById(userId).get();
+
+        return Admin_UserModifyDTO.builder()
+                .userId(user.getUserid())
+                .name(user.getName())
+                .email(user.getEmail())
+                .tel(user.getTel())
+                .build();
+    }
+
+    //2.받은 정보 수정 처리
     @Override
     public String modifyUser(Admin_UserModifyDTO dto) {
-        return "";
+        User user = adminUserRepository.findById(dto.getUserId()).get();
+
+        // 2. 이메일 중복 체크 (자기 자신 제외)
+        if(adminUserRepository.findByEmail(dto.getEmail())
+                .filter(u -> !u.getUserid().equals(dto.getUserId()))
+                .isPresent()) {
+            return "duplicateEmail";
+        }
+
+        // 3. 전화번호 중복 체크 (자기 자신 제외)
+        if(adminUserRepository.findByTel(dto.getTel())
+                .filter(u -> !u.getUserid().equals(dto.getUserId()))
+                .isPresent()) {
+            return "duplicateTel";
+        }
+
+        modelMapper.map(dto, user);
+        adminUserRepository.save(user);
+
+        return "success";
     }
 }
 

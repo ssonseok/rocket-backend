@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import shop.mit301.rocket.dto.Admin_UserListDTO;
+import shop.mit301.rocket.dto.Admin_UserModifyDTO;
 import shop.mit301.rocket.dto.UserRegisterDTO;
 import shop.mit301.rocket.service.Admin_UserService;
 import lombok.RequiredArgsConstructor;
@@ -61,4 +62,40 @@ public class Admin_UserController {
         List<Admin_UserListDTO> users = adminUserService.getAllUsers();
         return ResponseEntity.ok(users);
     }
+
+
+    @Operation(summary = "회원 정보 조회", description = "수정 화면에서 특정 유저 정보 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "404", description = "사용자 없음")
+    })
+    @GetMapping("/{userId}")
+    public ResponseEntity<Admin_UserModifyDTO> getUser(@PathVariable String userId) {
+        Admin_UserModifyDTO dto = adminUserService.getUserById(userId);
+        return ResponseEntity.ok(dto);
+    }
+
+    // 2. 특정 유저 정보 수정 (PUT)
+    @Operation(summary = "회원 정보 수정", description = "회원 정보 수정 및 이메일/전화번호 중복 체크")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "수정 성공"),
+            @ApiResponse(responseCode = "400", description = "수정 실패")
+    })
+    @PutMapping("/modify")
+    public ResponseEntity<Map<String, String>> modifyUser(@RequestBody Admin_UserModifyDTO dto) {
+        String result = adminUserService.modifyUser(dto);
+
+        Map<String, String> response = new HashMap<>();
+        if ("success".equals(result)) {
+            response.put("status", "success");
+            response.put("errorType", "none");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status", "fail");
+            response.put("errorType", result);
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+
 }
