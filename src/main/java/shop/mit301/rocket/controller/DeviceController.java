@@ -8,18 +8,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import shop.mit301.rocket.dto.HistoryRequestDTO;
 import shop.mit301.rocket.dto.HistoryResponseDTO;
-import shop.mit301.rocket.service.HistoryService;
+import shop.mit301.rocket.service.DeviceService;
 
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class DeviceController {
 
-    private final HistoryService historyService;
+    private final DeviceService deviceService;
 
     @PostMapping("/history")
     public ResponseEntity<HistoryResponseDTO> getHistory(@RequestBody HistoryRequestDTO request) {
-        return ResponseEntity.ok(historyService.getHistory(request));
+        return ResponseEntity.ok(deviceService.getHistory(request));
+    }
+
+    @PostMapping("/prediction")
+    public ResponseEntity<HistoryResponseDTO> getPrediction(@RequestBody HistoryRequestDTO request) {
+        return ResponseEntity.ok(deviceService.getPrediction(request));
     }
 
 }

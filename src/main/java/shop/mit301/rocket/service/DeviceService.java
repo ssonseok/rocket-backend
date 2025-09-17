@@ -5,7 +5,8 @@ import shop.mit301.rocket.dto.HistoryResponseDTO;
 
 import java.time.LocalDateTime;
 
-public interface HistoryService {
+public interface DeviceService {
     HistoryResponseDTO getHistory(HistoryRequestDTO request);
     LocalDateTime truncateByUnit(LocalDateTime dateTime, String unit);
+    HistoryResponseDTO getPrediction(HistoryRequestDTO request);
 }
