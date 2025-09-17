@@ -10,4 +10,6 @@ public interface Admin_UserRepository extends JpaRepository <User, String> {
     Optional<User> findByEmail(String email);
     // 전화번호 중복 체크용
     Optional<User> findByTel(String tel);
+
+    Optional<User> findByUseridAndEmail(String userId, String email);
 }

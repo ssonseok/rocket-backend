@@ -12,6 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Setter
 public class User {
     @Id
     @Column(nullable = false, length = 255, name = "user_id")
