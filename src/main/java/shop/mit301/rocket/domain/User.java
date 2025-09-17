@@ -11,8 +11,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@Setter
+@Builder(toBuilder = true)
 public class User {
     @Id
     @Column(nullable = false, length = 255, name = "user_id")
