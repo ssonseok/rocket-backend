@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.User;
+import shop.mit301.rocket.dto.Admin_UserDeleteDTO;
 import shop.mit301.rocket.dto.Admin_UserListDTO;
 import shop.mit301.rocket.dto.Admin_UserModifyDTO;
 import shop.mit301.rocket.dto.UserRegisterDTO;
@@ -103,6 +104,13 @@ public class Admin_UserServiceImpl implements Admin_UserService {
         modelMapper.map(dto, user);
         adminUserRepository.save(user);
 
+        return "success";
+    }
+
+    @Override
+    public String deleteUser(Admin_UserDeleteDTO dto) {
+        User user = adminUserRepository.findById(dto.getUserId()).get();
+        adminUserRepository.delete(user);
         return "success";
     }
 }

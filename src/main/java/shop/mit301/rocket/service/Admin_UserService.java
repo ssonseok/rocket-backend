@@ -1,5 +1,6 @@
 package shop.mit301.rocket.service;
 
+import shop.mit301.rocket.dto.Admin_UserDeleteDTO;
 import shop.mit301.rocket.dto.Admin_UserListDTO;
 import shop.mit301.rocket.dto.Admin_UserModifyDTO;
 import shop.mit301.rocket.dto.UserRegisterDTO;
@@ -17,5 +18,6 @@ public interface Admin_UserService {
     Admin_UserModifyDTO getUserById(String userId);
     String modifyUser(Admin_UserModifyDTO dto);
 
-
+    //회원삭제
+    String deleteUser(Admin_UserDeleteDTO dto);
 }

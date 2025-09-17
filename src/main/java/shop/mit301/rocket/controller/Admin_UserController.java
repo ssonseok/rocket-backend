@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import shop.mit301.rocket.dto.Admin_UserDeleteDTO;
 import shop.mit301.rocket.dto.Admin_UserListDTO;
 import shop.mit301.rocket.dto.Admin_UserModifyDTO;
 import shop.mit301.rocket.dto.UserRegisterDTO;
@@ -95,6 +96,22 @@ public class Admin_UserController {
             response.put("errorType", result);
             return ResponseEntity.badRequest().body(response);
         }
+    }
+
+    //회원삭
+    @Operation(summary = "회원 삭제", description = "특정 회원을 삭제합니다")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "삭제 성공")
+    })
+    @DeleteMapping("/delete")
+    public ResponseEntity<Map<String, String>> deleteUser(@RequestBody Admin_UserDeleteDTO dto) {
+        adminUserService.deleteUser(dto);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("errorType", "none");
+
+        return ResponseEntity.ok(response);
     }
 
 
