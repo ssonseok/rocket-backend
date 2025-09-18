@@ -83,7 +83,7 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService{
             adminDeviceDataRepository.save(deviceData);
         }
 
-        // 4) Response DTO 생성
+        // 4) Response DTO 생성-
         return Admin_DeviceRegisterRespDTO.builder()
                 .deviceSerialNumber(device.getDeviceSerialNumber())
                 .name(device.getName())
