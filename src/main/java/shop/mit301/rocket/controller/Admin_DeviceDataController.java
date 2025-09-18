@@ -12,19 +12,19 @@ import shop.mit301.rocket.service.Admin_DeviceDataService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/device/{deviceSerialNumber}/sensors")
+@RequestMapping("/api/device/{deviceSerialNumber}/deviceData")
 @RequiredArgsConstructor
 @Tag(name = "DeviceData", description = "장치 데이터 관련 API")
 public class Admin_DeviceDataController {
 
     private final Admin_DeviceDataService deviceDataService;
 
-    @Operation(summary = "장치 센서 조회", description = "등록된 장치의 센서 목록 조회")
-    @GetMapping("/list")
-    public List<Admin_DeviceDataDTO> getDeviceDataList(
-            @PathVariable String deviceSerialNumber) {
-        return deviceDataService.getDeviceDataList(deviceSerialNumber);
-    }
+//    @Operation(summary = "장치 센서 조회", description = "등록된 장치의 센서 목록 조회")
+//    @GetMapping("/list")
+//    public List<Admin_DeviceDataDTO> getDeviceDataList(
+//            @PathVariable String deviceSerialNumber) {
+//        return deviceDataService.getDeviceDataList(deviceSerialNumber);
+//    }
 
     @Operation(summary = "장치 센서 등록", description = "UI에서 입력한 센서(min/max/ref/unit) 값 등록")
     @PostMapping("/register")
