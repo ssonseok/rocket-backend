@@ -67,7 +67,7 @@ public class Admin_DeviceDataServiceImpl implements Admin_DeviceDataService{
             resp.setMin(savedData.getMin());
             resp.setMax(savedData.getMax());
             resp.setReferenceValue(savedData.getReference_value());
-            resp.setUnitId(unit.getUnit_id());
+            resp.setUnitId(unit.getUnitid());
             resp.setSaved(true);
 
             result.add(resp);
