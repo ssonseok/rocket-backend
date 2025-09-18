@@ -12,4 +12,6 @@ public interface Admin_UserRepository extends JpaRepository <User, String> {
     Optional<User> findByTel(String tel);
 
     Optional<User> findByUseridAndEmail(String userId, String email);
+
+    Optional<User> findByUserid(String userid);
 }

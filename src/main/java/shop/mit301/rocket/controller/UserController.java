@@ -7,6 +7,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import shop.mit301.rocket.domain.PasswordResetToken;
 import shop.mit301.rocket.domain.User;
+import shop.mit301.rocket.dto.UserDTO;
 import shop.mit301.rocket.repository.Admin_UserRepository;
 import shop.mit301.rocket.repository.PasswordResetTokenRepository;
 import shop.mit301.rocket.service.UserServiceImpl;
@@ -69,7 +70,7 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/api/changePwLink")
+    @PostMapping("/changePwLink")
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
         String token = request.get("token");
         String newPw = request.get("newPw");
@@ -108,5 +109,25 @@ public class UserController {
         response.put("status", "success");
         response.put("message", "비밀번호가 성공적으로 변경되었습니다.");
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, String>> login(@RequestBody UserDTO request) {
+        String userId = request.getUserid();
+        String password = request.getPw();
+
+        Optional<User> optionalUser = userRepository.findByUserid(userId);
+
+        if (optionalUser.isEmpty() || !optionalUser.get().getPw().equals(password)) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("status", "fail");
+            errorResponse.put("message", "아이디 또는 비밀번호가 일치하지 않습니다.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
+
+        // 성공 응답: status 만 포함
+        Map<String, String> successResponse = new HashMap<>();
+        successResponse.put("status", "success");
+        return ResponseEntity.ok(successResponse);
     }
 }
