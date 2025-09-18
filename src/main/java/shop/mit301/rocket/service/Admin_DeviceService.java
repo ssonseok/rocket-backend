@@ -1,0 +1,13 @@
+package shop.mit301.rocket.service;
+
+import shop.mit301.rocket.dto.Admin_DeviceRegisterReqDTO;
+import shop.mit301.rocket.dto.Admin_DeviceRegisterRespDTO;
+
+public interface Admin_DeviceService {
+    //시리얼넘버 중복 체크
+    boolean checkDuplicateSerialNumber(String deviceSerialNumber);
+    // 장치 연결 테스트 (Edge 통해 실제 연결 확인)
+    String testDeviceConnection(String ip, int port);
+    // 장치 등록
+    String registerDevice(Admin_DeviceRegisterReqDTO request);
+}
