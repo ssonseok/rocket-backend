@@ -22,34 +22,21 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/device")
 @RequiredArgsConstructor
-@Tag(name = "Device", description = "장비 관련 API")
-
+@Tag(name = "Device", description = "장치 관련 API")
 public class Admin_DeviceController {
 
-    private final Admin_DeviceService adminDeviceService;
+    private final Admin_DeviceService deviceService;
 
-    @Operation(
-            summary = "장치 등록",
-            description = "장치 정보와 포트를 입력받아 장치를 등록하고 센서 정보를 자동 생성합니다. 테스트 통신 성공 여부를 반환합니다."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "등록 성공",
-                    content = @Content(mediaType = "application/json")),
-            @ApiResponse(responseCode = "400", description = "등록 실패 (중복 시)",
-                    content = @Content(mediaType = "application/json"))
-    })
-
+    @Operation(summary = "장치 등록", description = "장치 정보 입력 후 등록. 성공하면 장치 데이터 입력 UI 활성화")
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> registerDevice(
-            @Parameter(description = "장치 등록 요청 DTO", required = true)
             @RequestBody Admin_DeviceRegisterReqDTO request) {
 
-        Admin_DeviceRegisterRespDTO resp = adminDeviceService.registerDevice(request);
+        Admin_DeviceRegisterRespDTO resp = deviceService.registerDevice(request);
 
         Map<String, Object> response = new HashMap<>();
         if (resp.isTestSuccess()) {
             response.put("status", "success");
-            response.put("errorType", "none");
             response.put("device", resp);
             return ResponseEntity.ok(response);
         } else {

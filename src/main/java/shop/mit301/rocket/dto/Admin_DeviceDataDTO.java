@@ -10,9 +10,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class Admin_DeviceDataDTO {
-    private String name;           // 데이터 명칭
-    private double min;
-    private double max;
-    private double referenceValue;
-    private int unitId;            // 단위 ID (DB FK)
+    private String name;  // UI 표시용 이름
+    private String unit;  // 단위 문자열 (백엔드에서 int PK로 변환)
 }
