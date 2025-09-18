@@ -16,8 +16,8 @@ import java.util.Objects;
 @AllArgsConstructor
 public class PredictionDataId implements Serializable {
 
-    @Column(nullable = false)
-    private LocalDateTime prediction_date;
+    @Column(nullable = false, name = "prediction_date")
+    private LocalDateTime predictiondate;
 
     @Column(nullable = false)
     private Integer device_data_id;
@@ -27,12 +27,12 @@ public class PredictionDataId implements Serializable {
         if (this == o) return true;
         if (!(o instanceof PredictionDataId)) return false;
         PredictionDataId that = (PredictionDataId) o;
-        return Objects.equals(prediction_date, that.prediction_date) &&
+        return Objects.equals(predictiondate, that.predictiondate) &&
                 Objects.equals(device_data_id, that.device_data_id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(prediction_date, device_data_id);
+        return Objects.hash(predictiondate, device_data_id);
     }
 }

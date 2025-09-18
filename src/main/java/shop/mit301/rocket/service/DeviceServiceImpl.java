@@ -2,19 +2,21 @@ package shop.mit301.rocket.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import shop.mit301.rocket.domain.DeviceData;
 import shop.mit301.rocket.domain.MeasurementData;
+import shop.mit301.rocket.domain.MeasurementDataId;
 import shop.mit301.rocket.domain.PredictionData;
 import shop.mit301.rocket.dto.HistoryRequestDTO;
 import shop.mit301.rocket.dto.HistoryResponseDTO;
+import shop.mit301.rocket.dto.SensorResponseDTO;
+import shop.mit301.rocket.repository.DeviceDataRepository;
 import shop.mit301.rocket.repository.MeasurementDataRepository;
 import shop.mit301.rocket.repository.PredictionDataRepository;
 import shop.mit301.rocket.repository.UnitRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +26,7 @@ public class DeviceServiceImpl implements DeviceService {
     private final PredictionDataRepository predictionDataRepository;
     private final MeasurementDataRepository measurementDataRepository;
     private final UnitRepository unitRepository;
+    private final DeviceDataRepository deviceDataRepository;
 
     @Override
     public HistoryResponseDTO getHistory(HistoryRequestDTO request) {
@@ -45,19 +48,19 @@ public class DeviceServiceImpl implements DeviceService {
         );
 
         List<HistoryResponseDTO.UnitInfo> unitInfos = unitRepository.findAllById(unitIds).stream()
-                .map(u -> new HistoryResponseDTO.UnitInfo(u.getUnit_id(), u.getUnit()))
+                .map(u -> new HistoryResponseDTO.UnitInfo(u.getUnitid(), u.getUnit()))
                 .collect(Collectors.toList());
 
         Map<LocalDateTime, List<MeasurementData>> grouped = measurements.stream()
-                .collect(Collectors.groupingBy(m -> truncateByUnit(m.getId().getMeasurement_date(), request.getUnit())));
+                .collect(Collectors.groupingBy(m -> truncateByUnit(m.getId().getMeasurementdate(), request.getUnit())));
 
         List<HistoryResponseDTO.TimestampGroup> data = grouped.entrySet().stream()
                 .map(entry -> {
                     List<HistoryResponseDTO.SensorValue> values = entry.getValue().stream()
                             .map(m -> new HistoryResponseDTO.SensorValue(
-                                    m.getDevice_data().getDevice_data_id(),
-                                    m.getDevice_data().getUnit().getUnit_id(),
-                                    m.getMeasurement_value()
+                                    m.getDevicedata().getDevicedataid(),
+                                    m.getDevicedata().getUnit().getUnitid(),
+                                    m.getMeasurementvalue()
                             )).collect(Collectors.toList());
 
                     return new HistoryResponseDTO.TimestampGroup(entry.getKey(), values);
@@ -104,18 +107,18 @@ public class DeviceServiceImpl implements DeviceService {
         );
 
         List<HistoryResponseDTO.UnitInfo> unitInfos = unitRepository.findAllById(unitIds).stream()
-                .map(u -> new HistoryResponseDTO.UnitInfo(u.getUnit_id(), u.getUnit()))
+                .map(u -> new HistoryResponseDTO.UnitInfo(u.getUnitid(), u.getUnit()))
                 .collect(Collectors.toList());
 
         Map<LocalDateTime, List<PredictionData>> grouped = predictions.stream()
-                .collect(Collectors.groupingBy(p -> truncateByUnit(p.getId().getPrediction_date(), request.getUnit())));
+                .collect(Collectors.groupingBy(p -> truncateByUnit(p.getId().getPredictiondate(), request.getUnit())));
 
         List<HistoryResponseDTO.TimestampGroup> data = grouped.entrySet().stream()
                 .map(entry -> {
                     List<HistoryResponseDTO.SensorValue> values = entry.getValue().stream()
                             .map(p -> new HistoryResponseDTO.SensorValue(
-                                    p.getDevice_data().getDevice_data_id(),
-                                    p.getDevice_data().getUnit().getUnit_id(),
+                                    p.getDevice_data().getDevicedataid(),
+                                    p.getDevice_data().getUnit().getUnitid(),
                                     p.getPredicted_value()
                             )).collect(Collectors.toList());
 
@@ -125,5 +128,54 @@ public class DeviceServiceImpl implements DeviceService {
                 .collect(Collectors.toList());
 
         return new HistoryResponseDTO(unitInfos, data);
+    }
+
+    @Override
+    public List<SensorResponseDTO> collectAndSend(List<Integer> sensorIds) {
+        List<DeviceData> sensors = deviceDataRepository.findByDevicedataidIn(sensorIds);
+        List<SensorResponseDTO> responses = new ArrayList<>();
+
+        for (DeviceData sensor : sensors) {
+            // ✅ 실제 센서 측정값 호출
+            Double value = getSensorValue(
+                    sensor.getDevice().getDeviceSerialNumber(),
+                    sensor.getDevicedataid()
+            );
+
+            if (value == null) continue;
+
+            MeasurementData measurement = MeasurementData.builder()
+                    .id(new MeasurementDataId(LocalDateTime.now(), sensor.getDevicedataid()))
+                    .measurementvalue(value)
+                    .devicedata(sensor)
+                    .build();
+
+            measurementDataRepository.save(measurement);
+
+            responses.add(SensorResponseDTO.builder()
+                    .deviceSerial(sensor.getDevice().getDeviceSerialNumber())
+                    .sensorId(sensor.getDevicedataid())
+                    .name(sensor.getName())
+                    .value(value)
+                    .unitId(sensor.getUnit().getUnitid())
+                    .referenceValue(sensor.getReference_value())
+                    .timestamp(measurement.getId().getMeasurementdate().toString())
+                    .build());
+        }
+
+        return responses;
+    }
+
+    @Override
+    public Double getSensorValue(String deviceSerial, Integer sensorId) {
+        // 예: TCP 소켓, MQTT 메시지, HTTP 요청 등 센서와의 통신 구현
+
+        // 아래는 예시 — 실제 구현 시 센서 프로토콜에 따라 변경
+        // 예: 센서 데이터가 HTTP로 온다면:
+        // ResponseEntity<Double> response = restTemplate.getForEntity(url, Double.class);
+        // return response.getBody();
+
+        // TODO: 실제 센서 통신 로직 구현 필요
+        throw new UnsupportedOperationException("센서 통신 구현 필요");
     }
 }

@@ -13,23 +13,23 @@ import java.util.Objects;
 @AllArgsConstructor
 public class MeasurementDataId implements Serializable {
 
-    @Column(nullable = false)
-    private LocalDateTime measurement_date;
+    @Column(nullable = false, name = "measurement_date")
+    private LocalDateTime measurementdate;
 
-    @Column(nullable = false)
-    private Integer device_data_id;
+    @Column(nullable = false, name = "device_data_id")
+    private Integer devicedataid;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof MeasurementDataId)) return false;
         MeasurementDataId that = (MeasurementDataId) o;
-        return Objects.equals(measurement_date, that.measurement_date) &&
-                Objects.equals(device_data_id, that.device_data_id);
+        return Objects.equals(measurementdate, that.measurementdate) &&
+                Objects.equals(devicedataid, that.devicedataid);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(measurement_date, device_data_id);
+        return Objects.hash(measurementdate, devicedataid);
     }
 }

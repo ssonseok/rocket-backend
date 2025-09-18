@@ -13,11 +13,11 @@ import java.util.List;
 public interface MeasurementDataRepository extends JpaRepository<MeasurementData, MeasurementDataId> {
 
     @Query("SELECT m FROM MeasurementData m " +
-            "JOIN FETCH m.device_data d " +
+            "JOIN FETCH m.devicedata d " +
             "JOIN FETCH d.unit u " +
-            "WHERE m.id.measurement_date BETWEEN :start AND :end " +
-            "AND d.unit.id IN :unitIds " +
-            "AND d.device_data_id IN :sensorIds")
+            "WHERE m.id.measurementdate BETWEEN :start AND :end " +
+            "AND d.unit.unitid IN :unitIds " +
+            "AND d.devicedataid IN :sensorIds")
     List<MeasurementData> findAllByFilter(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end,
