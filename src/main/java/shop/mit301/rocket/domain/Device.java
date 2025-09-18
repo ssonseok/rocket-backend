@@ -17,7 +17,7 @@ public class Device {
 
     @Id
     @Column(nullable = false, length = 8, columnDefinition = "CHAR(8)")
-    private String device_serial_number;
+    private String deviceSerialNumber;
 
     @Column(nullable = false)
     private int port;

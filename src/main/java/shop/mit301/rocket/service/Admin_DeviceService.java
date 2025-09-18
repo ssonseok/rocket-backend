@@ -9,5 +9,5 @@ public interface Admin_DeviceService {
     // 장치 연결 테스트 (Edge 통해 실제 연결 확인)
     String testDeviceConnection(String ip, int port);
     // 장치 등록
-    String registerDevice(Admin_DeviceRegisterReqDTO request);
+    Admin_DeviceRegisterRespDTO registerDevice(Admin_DeviceRegisterReqDTO request);
 }
