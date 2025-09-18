@@ -14,9 +14,9 @@ public interface PredictionDataRepository extends JpaRepository<PredictionData, 
     @Query("SELECT p FROM PredictionData p " +
             "JOIN FETCH p.device_data d " +
             "JOIN FETCH d.unit u " +
-            "WHERE p.id.prediction_date BETWEEN :start AND :end " +
-            "AND d.unit.id IN :unitIds " +
-            "AND d.device_data_id IN :sensorIds")
+            "WHERE p.id.predictiondate BETWEEN :start AND :end " +
+            "AND u.unitid IN :unitIds " +
+            "AND d.devicedataid IN :sensorIds")
     List<PredictionData> findAllByFilter(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end,

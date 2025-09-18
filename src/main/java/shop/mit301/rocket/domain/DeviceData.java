@@ -16,8 +16,8 @@ public class DeviceData {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private int device_data_id;
+    @Column(nullable = false, name = "device_data_id")
+    private int devicedataid;
 
     @Column(nullable = false)
     private double min;
@@ -39,9 +39,9 @@ public class DeviceData {
     @JoinColumn(name = "device_serial_number", nullable = false)
     private Device device;
 
-    @OneToMany(mappedBy = "device_data")
+    @OneToMany(mappedBy = "devicedata")
     private List<MeasurementData> measurement_data_list = new ArrayList<>();
 
-    @OneToMany(mappedBy = "device_data")
+    @OneToMany(mappedBy = "devicedata")
     private List<User_has_DeviceData> user_device_data_list = new ArrayList<>();
 }

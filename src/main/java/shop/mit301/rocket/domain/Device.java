@@ -16,7 +16,7 @@ import java.util.List;
 public class Device {
 
     @Id
-    @Column(nullable = false, length = 8, columnDefinition = "CHAR(8)")
+    @Column(nullable = false, length = 8, columnDefinition = "CHAR(8)", name = "device_serial_number")
     private String deviceSerialNumber;
 
     @Column(nullable = false)

@@ -22,6 +22,6 @@
         @ManyToOne
         @MapsId("device_data_id")
         @JoinColumn(name = "device_data_id")
-        private DeviceData device_data;
+        private DeviceData devicedata;
 
     }

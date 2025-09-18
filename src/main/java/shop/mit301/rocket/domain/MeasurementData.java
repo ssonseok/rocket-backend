@@ -14,11 +14,11 @@ public class MeasurementData {
     @EmbeddedId
     private MeasurementDataId id;
 
-    @Column(nullable = false)
-    private double measurement_value;
+    @Column(nullable = false, name = "measurement_value")
+    private double measurementvalue;
 
-    @MapsId("device_data_id")
+    @MapsId("devicedataid")
     @ManyToOne
     @JoinColumn(name = "device_data_id", nullable = false)
-    private DeviceData device_data;
+    private DeviceData devicedata;
 }
