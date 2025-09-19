@@ -1,13 +1,11 @@
 package shop.mit301.rocket.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.Device;
 import shop.mit301.rocket.domain.DeviceData;
-import shop.mit301.rocket.dto.Admin_DeviceListDTO;
-import shop.mit301.rocket.dto.Admin_DeviceRegisterReqDTO;
-import shop.mit301.rocket.dto.Admin_DeviceRegisterRespDTO;
-import shop.mit301.rocket.dto.DeviceDataDTO;
+import shop.mit301.rocket.dto.*;
 import shop.mit301.rocket.repository.Admin_DeviceDataRepository;
 import shop.mit301.rocket.repository.Admin_DeviceRepository;
 import shop.mit301.rocket.repository.Admin_UnitRepository;
@@ -91,5 +89,20 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService{
 
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public String deleteDevice(Admin_DeviceDeleteDTO dto) {
+        String serial = dto.getDeviceSerialNumber();
+
+        // 1. 연결된 장치 데이터 먼저 삭제
+        adminDeviceDataRepository.deleteByDevice_DeviceSerialNumber(serial);
+
+        // 2. 장치 삭제
+        Device device = adminDeviceRepository.findById(serial).get();
+        adminDeviceRepository.delete(device);
+
+        return "success";
     }
 }

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import shop.mit301.rocket.dto.Admin_DeviceDeleteDTO;
 import shop.mit301.rocket.dto.Admin_DeviceListDTO;
 import shop.mit301.rocket.dto.Admin_DeviceRegisterReqDTO;
 import shop.mit301.rocket.dto.Admin_DeviceRegisterRespDTO;
@@ -61,4 +62,29 @@ public class Admin_DeviceController {
         List<Admin_DeviceListDTO> deviceList = deviceService.getDeviceList();
         return ResponseEntity.ok(deviceList);
     }
+
+    @Operation(
+            summary = "장치 삭제",
+            description = "특정 장치를 삭제합니다",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "삭제할 장치 정보",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = Admin_DeviceDeleteDTO.class))
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "삭제 성공"),
+            @ApiResponse(responseCode = "400", description = "삭제 실패")
+    })
+    @DeleteMapping("/delete")
+    public ResponseEntity<Map<String, String>> deleteDevice(@RequestBody Admin_DeviceDeleteDTO dto) {
+        deviceService.deleteDevice(dto);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("errorType", "none");
+
+        return ResponseEntity.ok(response);
+    }
 }
+

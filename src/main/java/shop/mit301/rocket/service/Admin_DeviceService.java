@@ -1,5 +1,6 @@
 package shop.mit301.rocket.service;
 
+import shop.mit301.rocket.dto.Admin_DeviceDeleteDTO;
 import shop.mit301.rocket.dto.Admin_DeviceListDTO;
 import shop.mit301.rocket.dto.Admin_DeviceRegisterReqDTO;
 import shop.mit301.rocket.dto.Admin_DeviceRegisterRespDTO;
@@ -15,4 +16,6 @@ public interface Admin_DeviceService {
     Admin_DeviceRegisterRespDTO registerDevice(Admin_DeviceRegisterReqDTO request);
     //장비 목록
     List<Admin_DeviceListDTO> getDeviceList();
+    //장비 삭제
+    String deleteDevice(Admin_DeviceDeleteDTO dto);
 }
