@@ -3,20 +3,20 @@ package shop.mit301.rocket.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import shop.mit301.rocket.dto.Admin_DeviceListDTO;
 import shop.mit301.rocket.dto.Admin_DeviceRegisterReqDTO;
 import shop.mit301.rocket.dto.Admin_DeviceRegisterRespDTO;
 import shop.mit301.rocket.service.Admin_DeviceService;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -45,5 +45,20 @@ public class Admin_DeviceController {
             response.put("device", resp);
             return ResponseEntity.badRequest().body(response);
         }
+    }
+
+    @Operation(
+            summary = "장치 목록 조회",
+            description = "등록된 장치들의 목록을 반환. 장치명, 시리얼번호, 등록일, 데이터 종류 리스트 포함"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Admin_DeviceListDTO.class)))
+    })
+    @GetMapping("/list")
+    public ResponseEntity<List<Admin_DeviceListDTO>> getDeviceList() {
+        List<Admin_DeviceListDTO> deviceList = deviceService.getDeviceList();
+        return ResponseEntity.ok(deviceList);
     }
 }

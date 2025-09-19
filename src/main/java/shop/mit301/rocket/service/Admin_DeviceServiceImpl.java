@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.Device;
 import shop.mit301.rocket.domain.DeviceData;
+import shop.mit301.rocket.dto.Admin_DeviceListDTO;
 import shop.mit301.rocket.dto.Admin_DeviceRegisterReqDTO;
 import shop.mit301.rocket.dto.Admin_DeviceRegisterRespDTO;
 import shop.mit301.rocket.dto.DeviceDataDTO;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -69,5 +71,25 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService{
                 .testSuccess(true)
                 .sensors(Collections.emptyList())
                 .build();
+    }
+
+    @Override
+    public List<Admin_DeviceListDTO> getDeviceList() {
+        List<Device> devices = adminDeviceRepository.findAll();
+
+        return devices.stream().map(device -> {
+            Admin_DeviceListDTO dto = new Admin_DeviceListDTO();
+            dto.setDeviceSerialNumber(device.getDeviceSerialNumber());
+            dto.setDeviceName(device.getName());
+            dto.setCreatedDate(device.getRegist_date());
+
+            // DeviceData에서 name만 추출
+            List<String> dataNames = device.getDevice_data_list().stream()
+                    .map(DeviceData::getName)
+                    .collect(Collectors.toList());
+            dto.setDataNames(dataNames);
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 }
