@@ -1,5 +1,6 @@
 package shop.mit301.rocket.repository;
 
+import shop.mit301.rocket.domain.DeviceData;
 import shop.mit301.rocket.domain.MeasurementData;
 import shop.mit301.rocket.domain.MeasurementDataId;
 
@@ -9,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface MeasurementDataRepository extends JpaRepository<MeasurementData, MeasurementDataId> {
 
@@ -24,4 +26,6 @@ public interface MeasurementDataRepository extends JpaRepository<MeasurementData
             @Param("unitIds") List<Integer> unitIds,
             @Param("sensorIds") List<Integer> sensorIds
     );
+
+    Optional<MeasurementData> findTopByDevicedataOrderByIdMeasurementdateDesc(DeviceData devicedata);
 }

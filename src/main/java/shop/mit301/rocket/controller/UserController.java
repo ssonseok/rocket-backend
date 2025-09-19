@@ -49,12 +49,12 @@ public class UserController {
     @PostMapping("/changePw")
     public ResponseEntity<Map<String, String>> changePassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
-        String userId = request.get("userId");
+        String id = request.get("id");
 
         Map<String, String> response = new HashMap<>();
 
         // username(아이디) + email이 정확히 일치하는 사용자만 조회
-        Optional<User> optionalUser = userRepository.findByUseridAndEmail(userId, email);
+        Optional<User> optionalUser = userRepository.findByUseridAndEmail(id, email);
 
         if (optionalUser.isEmpty()) {
             response.put("message", "일치하는 사용자 정보가 없습니다.");

@@ -1,6 +1,7 @@
 package shop.mit301.rocket.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.DeviceData;
 import shop.mit301.rocket.domain.MeasurementData;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class DeviceServiceImpl implements DeviceService {
 
     private final PredictionDataRepository predictionDataRepository;
@@ -89,7 +91,12 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     public HistoryResponseDTO getPrediction(HistoryRequestDTO request) {
+        if (request.getStartDate() == null || request.getEndDate() == null) {
+            throw new IllegalArgumentException("startDate와 endDate는 필수 값입니다.");
+        }
+
         List<Integer> sensorIds = request.getY().stream()
+                .filter(y -> y.getSensorIds() != null)
                 .flatMap(y -> y.getSensorIds().stream())
                 .distinct()
                 .collect(Collectors.toList());
@@ -133,33 +140,50 @@ public class DeviceServiceImpl implements DeviceService {
     @Override
     public List<SensorResponseDTO> collectAndSend(List<Integer> sensorIds) {
         List<DeviceData> sensors = deviceDataRepository.findByDevicedataidIn(sensorIds);
-        List<SensorResponseDTO> responses = new ArrayList<>();
+        List<MeasurementData> measurementsToSave = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
 
         for (DeviceData sensor : sensors) {
-            // ✅ 실제 센서 측정값 호출
-            Double value = getSensorValue(
-                    sensor.getDevice().getDeviceSerialNumber(),
-                    sensor.getDevicedataid()
-            );
+            Double value;
+            try {
+                value = getSensorValue(sensor.getDevice().getDeviceSerialNumber(), sensor.getDevicedataid());
+            } catch (Exception e) {
+                log.error("센서 값 조회 실패 - sensorId: {}", sensor.getDevicedataid(), e);
+                continue;
+            }
 
-            if (value == null) continue;
+            if (value == null) {
+                log.warn("센서 값이 null입니다 - sensorId: {}", sensor.getDevicedataid());
+                continue;
+            }
 
             MeasurementData measurement = MeasurementData.builder()
-                    .id(new MeasurementDataId(LocalDateTime.now(), sensor.getDevicedataid()))
+                    .id(new MeasurementDataId(now, sensor.getDevicedataid()))
                     .measurementvalue(value)
                     .devicedata(sensor)
                     .build();
 
-            measurementDataRepository.save(measurement);
+            measurementsToSave.add(measurement);
+        }
+
+        measurementDataRepository.saveAll(measurementsToSave);
+
+        List<SensorResponseDTO> responses = new ArrayList<>();
+        for (DeviceData sensor : sensors) {
+            MeasurementData latestMeasurement = measurementDataRepository
+                    .findTopByDevicedataOrderByIdMeasurementdateDesc(sensor)
+                    .orElse(null);
+
+            if (latestMeasurement == null) continue;
 
             responses.add(SensorResponseDTO.builder()
                     .deviceSerial(sensor.getDevice().getDeviceSerialNumber())
                     .sensorId(sensor.getDevicedataid())
                     .name(sensor.getName())
-                    .value(value)
+                    .value(latestMeasurement.getMeasurementvalue())
                     .unitId(sensor.getUnit().getUnitid())
                     .referenceValue(sensor.getReference_value())
-                    .timestamp(measurement.getId().getMeasurementdate().toString())
+                    .timestamp(latestMeasurement.getId().getMeasurementdate().toString())
                     .build());
         }
 
