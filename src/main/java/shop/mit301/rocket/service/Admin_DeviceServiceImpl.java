@@ -2,6 +2,7 @@ package shop.mit301.rocket.service;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.Device;
 import shop.mit301.rocket.domain.DeviceData;
@@ -18,11 +19,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class Admin_DeviceServiceImpl implements Admin_DeviceService{
+public class Admin_DeviceServiceImpl implements Admin_DeviceService {
 
     private final Admin_DeviceRepository adminDeviceRepository;
     private final Admin_UnitRepository adminUnitRepository;
     private final Admin_DeviceDataRepository adminDeviceDataRepository;
+    private final ModelMapper modelMapper;
 
     @Override
     public boolean checkDuplicateSerialNumber(String deviceSerialNumber) {
@@ -56,11 +58,11 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService{
                 .name(request.getName())
                 .ip(request.getIp())
                 .port(request.getPort())
-                .regist_date(LocalDateTime.now())  // 필드명 그대로
+                .regist_date(LocalDateTime.now())
                 .build();
         adminDeviceRepository.save(device);
 
-        // 초기에는 센서 정보 없음 (엣지에서 메타 수신 후 UI에서 입력)
+        // 초기에는 장치데이터 없음 (엣지에서 수신 후 UI에서 입력)
         return Admin_DeviceRegisterRespDTO.builder()
                 .deviceSerialNumber(device.getDeviceSerialNumber())
                 .name(device.getName())
@@ -96,13 +98,35 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService{
     public String deleteDevice(Admin_DeviceDeleteDTO dto) {
         String serial = dto.getDeviceSerialNumber();
 
-        // 1. 연결된 장치 데이터 먼저 삭제
+        //연결된 장치 데이터 먼저 삭제
         adminDeviceDataRepository.deleteByDevice_DeviceSerialNumber(serial);
 
-        // 2. 장치 삭제
         Device device = adminDeviceRepository.findById(serial).get();
         adminDeviceRepository.delete(device);
 
         return "success";
     }
+
+    @Override
+    @Transactional
+    public String modifyDevice(Admin_DeviceModifyReqDTO dto) {
+        Device existing = adminDeviceRepository.findById(dto.getDeviceSerialNumber()).get();
+
+        if (!"success".equals(testDeviceConnection(dto.getIp(), dto.getPort()))) {
+            return "fail";
+        }
+
+        Device updated = Device.builder()
+                .deviceSerialNumber(existing.getDeviceSerialNumber())
+                .name(dto.getName())
+                .ip(dto.getIp())
+                .port(dto.getPort())
+                .regist_date(existing.getRegist_date())               // 기존 등록일 유지
+                .build();
+
+        adminDeviceRepository.save(updated);
+
+        return "success";
+    }
+
 }

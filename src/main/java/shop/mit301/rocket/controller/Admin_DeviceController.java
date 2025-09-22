@@ -10,10 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import shop.mit301.rocket.dto.Admin_DeviceDeleteDTO;
-import shop.mit301.rocket.dto.Admin_DeviceListDTO;
-import shop.mit301.rocket.dto.Admin_DeviceRegisterReqDTO;
-import shop.mit301.rocket.dto.Admin_DeviceRegisterRespDTO;
+import shop.mit301.rocket.dto.*;
 import shop.mit301.rocket.service.Admin_DeviceService;
 
 import java.util.HashMap;
@@ -86,5 +83,22 @@ public class Admin_DeviceController {
 
         return ResponseEntity.ok(response);
     }
+
+    // 장치 수정
+    @Operation(summary = "장치 수정", description = "특정 장치 정보를 수정합니다. IP/Port 테스트 성공 시만 수정 가능")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "수정 성공"),
+            @ApiResponse(responseCode = "200", description = "수정 실패 (테스트 실패 시)")
+    })
+    @PutMapping("/modify")
+    public ResponseEntity<Map<String, String>> modifyDevice(@RequestBody Admin_DeviceModifyReqDTO dto) {
+        String result = deviceService.modifyDevice(dto);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("status", result);
+
+        return ResponseEntity.ok(response);
+    }
 }
+
 
