@@ -52,7 +52,7 @@ public class UserServiceImpl implements UserService {
 
         tokenRepository.save(tokenEntity);
 
-        String link = "https://rocket.mit301.shop/changePw.html?token=" + resetToken;
+        String link = "https://rocket.mit301.shop/changePwLink.html?token=" + resetToken;
         String subject = "비밀번호 재설정 링크";
         String body = "다음 링크를 클릭하여 비밀번호를 재설정하세요:\n" + link;
 
