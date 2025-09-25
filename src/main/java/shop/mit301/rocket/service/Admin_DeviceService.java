@@ -17,4 +17,10 @@ public interface Admin_DeviceService {
     String deleteDevice(Admin_DeviceDeleteDTO dto);
     //장비 수정
     String modifyDevice(Admin_DeviceModifyReqDTO dto);
+    //장비 상태보기
+    Admin_DeviceStatusRespDTO getDeviceStatus(String serialNumber);
+    Admin_DeviceStatusTestDTO testDeviceConnection(String serialNumber);
+    //수정화면에서 필요한 조회
+    Admin_DeviceDetailDTO getDeviceDetail(String deviceSerialNumber);
+
 }

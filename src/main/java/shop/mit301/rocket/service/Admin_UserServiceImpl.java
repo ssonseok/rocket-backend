@@ -44,7 +44,8 @@ public class Admin_UserServiceImpl implements Admin_UserService {
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .tel(dto.getTel())
-                .permission((byte) dto.getPermission())
+//                .permission((byte) dto.getPermission())
+                .permission((byte) 0) //일반사용자로 고정
                 .build();
 
         adminUserRepository.save(user);
@@ -72,7 +73,12 @@ public class Admin_UserServiceImpl implements Admin_UserService {
     //1.수정화면에 기존 정보 조회
     @Override
     public Admin_UserModifyDTO getUserById(String userId) {
-        User user = adminUserRepository.findById(userId).get();
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("userId가 null이거나 비어있습니다.");
+        }
+
+        User user = adminUserRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("해당 유저가 존재하지 않습니다."));
 
         return Admin_UserModifyDTO.builder()
                 .userId(user.getUserid())
@@ -85,31 +91,42 @@ public class Admin_UserServiceImpl implements Admin_UserService {
     //2.받은 정보 수정 처리
     @Override
     public String modifyUser(Admin_UserModifyDTO dto) {
-        User user = adminUserRepository.findById(dto.getUserId()).get();
+        if (dto.getUserId() == null || dto.getUserId().isBlank()) {
+            throw new IllegalArgumentException("userId가 null입니다. 요청 확인 필요");
+        }
 
-        // 2. 이메일 중복 체크 (자기 자신 제외)
+        User existingUser = adminUserRepository.findById(dto.getUserId())
+                .orElseThrow(() -> new RuntimeException("해당 유저가 존재하지 않습니다."));
+
+        // 이메일/전화번호 중복 체크
         if(adminUserRepository.findByEmail(dto.getEmail())
                 .filter(u -> !u.getUserid().equals(dto.getUserId()))
-                .isPresent()) {
-            return "duplicateEmail";
-        }
+                .isPresent()) return "duplicateEmail";
 
-        // 3. 전화번호 중복 체크 (자기 자신 제외)
         if(adminUserRepository.findByTel(dto.getTel())
                 .filter(u -> !u.getUserid().equals(dto.getUserId()))
-                .isPresent()) {
-            return "duplicateTel";
-        }
+                .isPresent()) return "duplicateTel";
 
-        modelMapper.map(dto, user);
-        adminUserRepository.save(user);
+        // Builder로 기존 객체 복사하면서 변경
+        User updatedUser = existingUser.toBuilder()
+                .name(dto.getName())
+                .email(dto.getEmail())
+                .tel(dto.getTel())
+                .build();
+
+        adminUserRepository.save(updatedUser);
 
         return "success";
     }
 
     @Override
     public String deleteUser(Admin_UserDeleteDTO dto) {
-        User user = adminUserRepository.findById(dto.getUserId()).get();
+        if (dto.getUserId() == null || dto.getUserId().isBlank()) {
+            throw new IllegalArgumentException("userId가 null입니다. 요청 확인 필요");
+        }
+
+        User user = adminUserRepository.findById(dto.getUserId())
+                .orElseThrow(() -> new RuntimeException("해당 유저가 존재하지 않습니다."));
         adminUserRepository.delete(user);
         return "success";
     }
