@@ -99,6 +99,24 @@ public class Admin_DeviceController {
 
         return ResponseEntity.ok(response);
     }
+
+    @Operation(
+            summary = "장치 상세 조회",
+            description = "단일 장치와 연결된 센서 데이터를 조회합니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Admin_DeviceDetailDTO.class))),
+            @ApiResponse(responseCode = "404", description = "장치 없음")
+    })
+    @GetMapping("/{deviceSerialNumber}")
+    public ResponseEntity<Admin_DeviceDetailDTO> getDeviceDetail(
+            @PathVariable String deviceSerialNumber) {
+
+        Admin_DeviceDetailDTO detailDTO = deviceService.getDeviceDetail(deviceSerialNumber);
+        return ResponseEntity.ok(detailDTO);
+    }
 }
 
 

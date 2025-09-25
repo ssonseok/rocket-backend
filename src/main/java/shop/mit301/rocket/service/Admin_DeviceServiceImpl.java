@@ -121,12 +121,55 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
                 .name(dto.getName())
                 .ip(dto.getIp())
                 .port(dto.getPort())
-                .regist_date(existing.getRegist_date())               // 기존 등록일 유지
+                .regist_date(existing.getRegist_date())
                 .build();
 
         adminDeviceRepository.save(updated);
 
         return "success";
     }
+
+    @Override
+    public Admin_DeviceStatusRespDTO getDeviceStatus(String serialNumber) {
+        return null;
+    }
+
+    @Override
+    public Admin_DeviceStatusTestDTO testDeviceConnection(String serialNumber) {
+        return null;
+    }
+
+    @Override
+    public Admin_DeviceDetailDTO getDeviceDetail(String deviceSerialNumber) {
+
+        // 1. 장치 조회
+        Device device = adminDeviceRepository.findById(deviceSerialNumber)
+                .orElseThrow(() -> new RuntimeException("해당 장치가 존재하지 않습니다."));
+
+        // 2. 장치에 연결된 센서 데이터 조회
+        List<DeviceData> dataList = adminDeviceDataRepository.findByDevice_DeviceSerialNumber(deviceSerialNumber);
+
+        // 3. 센서 DTO 변환 (ModelMapper + 빌더)
+        List<Admin_DeviceDataRegisterRespDTO> sensors = dataList.stream()
+                .map(data -> Admin_DeviceDataRegisterRespDTO.builder()
+                        .name(data.getName())
+                        .min(data.getMin())
+                        .max(data.getMax())
+                        .referenceValue(data.getReference_value())   // 필드 이름에 맞게 getter 호출
+                        .unitId(data.getUnit().getUnitid())          // Unit 객체에서 id 꺼내기
+                        .saved(true)
+                        .build()
+                ).collect(Collectors.toList());
+
+        // 4. 장치 DTO 변환 (빌더 사용)
+        return Admin_DeviceDetailDTO.builder()
+                .deviceSerialNumber(device.getDeviceSerialNumber())
+                .name(device.getName())
+                .ip(device.getIp())
+                .port(device.getPort())
+                .deviceDataList(sensors)
+                .build();
+    }
+
 
 }

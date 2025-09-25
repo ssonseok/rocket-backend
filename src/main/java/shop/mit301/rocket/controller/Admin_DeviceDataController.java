@@ -19,14 +19,14 @@ public class Admin_DeviceDataController {
 
     private final Admin_DeviceDataService deviceDataService;
 
-//    @Operation(summary = "장치 센서 조회", description = "등록된 장치의 센서 목록 조회")
-//    @GetMapping("/list")
-//    public List<Admin_DeviceDataDTO> getDeviceDataList(
-//            @PathVariable String deviceSerialNumber) {
-//        return deviceDataService.getDeviceDataList(deviceSerialNumber);
-//    }
+    @Operation(summary = "장치 데이터 조회", description = "등록된 장치의 데이터 목록 조회")
+    @GetMapping("/list")
+    public List<Admin_DeviceDataDTO> getDeviceDataList(
+            @PathVariable String deviceSerialNumber) {
+        return deviceDataService.getDeviceDataList(deviceSerialNumber);
+    }
 
-    @Operation(summary = "장치 센서 등록", description = "UI에서 입력한 센서(min/max/ref/unit) 값 등록")
+    @Operation(summary = "장치 데이터 등록", description = "UI에서 입력한 데이터(min/max/ref/unit) 값 등록")
     @PostMapping("/register")
     public List<Admin_DeviceDataRegisterRespDTO> registerDeviceData(
             @PathVariable String deviceSerialNumber,
