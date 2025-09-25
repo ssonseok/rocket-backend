@@ -32,8 +32,10 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     public HistoryResponseDTO getHistory(HistoryRequestDTO request) {
-        List<Integer> sensorIds = request.getY().stream()
-                .flatMap(y -> y.getSensorIds().stream())
+        List<Integer> sensorIds = Optional.ofNullable(request.getY())
+                .orElse(Collections.emptyList())
+                .stream()
+                .flatMap(y -> Optional.ofNullable(y.getSensorIds()).orElse(Collections.emptyList()).stream())
                 .distinct()
                 .collect(Collectors.toList());
 
@@ -201,5 +203,21 @@ public class DeviceServiceImpl implements DeviceService {
 
         // TODO: 실제 센서 통신 로직 구현 필요
         throw new UnsupportedOperationException("센서 통신 구현 필요");
+    }
+    @Override
+    public List<SensorResponseDTO> getAllSensors() {
+        List<DeviceData> sensors = deviceDataRepository.findAll();
+        // 값은 테스트용 기본값으로 셋팅
+        return sensors.stream()
+                .map(sensor -> SensorResponseDTO.builder()
+                        .deviceSerial(sensor.getDevice().getDeviceSerialNumber())
+                        .sensorId(sensor.getDevicedataid())
+                        .name(sensor.getName())
+                        .value(0.0) // 테스트용 기본값
+                        .unitId(sensor.getUnit().getUnitid())
+                        .referenceValue(sensor.getReference_value())
+                        .timestamp(LocalDateTime.now().toString())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

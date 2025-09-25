@@ -13,4 +13,5 @@ public interface DeviceService {
     HistoryResponseDTO getPrediction(HistoryRequestDTO request);
     List<SensorResponseDTO> collectAndSend(List<Integer> sensorIds);
     Double getSensorValue(String deviceSerial, Integer sensorId);
+    List<SensorResponseDTO> getAllSensors();
 }

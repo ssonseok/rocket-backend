@@ -25,7 +25,7 @@ public class UserController {
     private final UserServiceImpl userService;
     private final PasswordResetTokenRepository tokenRepository;
 
-    @PostMapping("/findid")
+    @PostMapping("/findId")
     public ResponseEntity<Map<String, String>> findIdByEmail(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         Map<String, String> response = new HashMap<>();
@@ -71,8 +71,10 @@ public class UserController {
     }
 
     @PostMapping("/changePwLink")
-    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
-        String token = request.get("token");
+    public ResponseEntity<Map<String, String>> resetPassword(
+            @RequestParam("token") String token,
+            @RequestBody Map<String, String> request) {
+
         String newPw = request.get("newPw");
         Map<String, String> response = new HashMap<>();
 

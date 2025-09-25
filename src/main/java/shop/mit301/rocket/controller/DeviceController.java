@@ -8,7 +8,10 @@ import shop.mit301.rocket.dto.HistoryResponseDTO;
 import shop.mit301.rocket.dto.SensorResponseDTO;
 import shop.mit301.rocket.service.DeviceService;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -28,8 +31,16 @@ public class DeviceController {
     }
 
     @GetMapping("/sensors")
-    public List<SensorResponseDTO> getSensors(@RequestParam List<Integer> sensorIds) {
-        return deviceService.collectAndSend(sensorIds);
+    public List<SensorResponseDTO> getSensors(@RequestParam(required = false) String sensorIds) {
+        if (sensorIds == null || sensorIds.isEmpty()) {
+            // sensorIds가 없으면 전체 센서 목록 반환
+            return deviceService.getAllSensors();
+        }
+
+        List<Integer> ids = Arrays.stream(sensorIds.split(","))
+                .map(Integer::parseInt)
+                .collect(Collectors.toList());
+        return deviceService.collectAndSend(ids);
     }
 
 }

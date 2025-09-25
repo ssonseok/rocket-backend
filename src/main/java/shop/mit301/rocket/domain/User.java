@@ -35,6 +35,6 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<User_has_DeviceData> user_device_data_list = new ArrayList<>();
 
-    @OneToOne
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private PasswordResetToken passwordResetToken;
 }
