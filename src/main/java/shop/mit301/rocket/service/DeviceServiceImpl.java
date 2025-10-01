@@ -64,7 +64,8 @@ public class DeviceServiceImpl implements DeviceService {
                             .map(m -> new HistoryResponseDTO.SensorValue(
                                     m.getDevicedata().getDevicedataid(),
                                     m.getDevicedata().getUnit().getUnitid(),
-                                    m.getMeasurementvalue()
+                                    m.getMeasurementvalue(),
+                                    m.getDevicedata().getReference_value() // 기준값 포함
                             )).collect(Collectors.toList());
 
                     return new HistoryResponseDTO.TimestampGroup(entry.getKey(), values);
@@ -128,7 +129,8 @@ public class DeviceServiceImpl implements DeviceService {
                             .map(p -> new HistoryResponseDTO.SensorValue(
                                     p.getDevice_data().getDevicedataid(),
                                     p.getDevice_data().getUnit().getUnitid(),
-                                    p.getPredicted_value()
+                                    p.getPredicted_value(),
+                                    p.getDevice_data().getReference_value()  // 기준값 포함
                             )).collect(Collectors.toList());
 
                     return new HistoryResponseDTO.TimestampGroup(entry.getKey(), values);

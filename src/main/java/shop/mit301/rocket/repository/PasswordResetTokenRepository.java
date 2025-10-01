@@ -1,10 +1,20 @@
 package shop.mit301.rocket.repository;
 
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import shop.mit301.rocket.domain.PasswordResetToken;
+import shop.mit301.rocket.domain.User;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
     Optional<PasswordResetToken> findByToken(String token);
+    List<PasswordResetToken> findByUser(User user);
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM PasswordResetToken t WHERE t.user = :user")
+    void deleteByUser(User user);
 }
