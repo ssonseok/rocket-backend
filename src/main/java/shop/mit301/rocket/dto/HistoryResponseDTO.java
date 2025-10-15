@@ -37,5 +37,6 @@ public class HistoryResponseDTO {
         private int sensorId;
         private int unitId;
         private double value;
+        private double referenceValue;
     }
 }

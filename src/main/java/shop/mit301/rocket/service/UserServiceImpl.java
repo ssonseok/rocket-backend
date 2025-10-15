@@ -1,5 +1,6 @@
 package shop.mit301.rocket.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.mail.MailException;
@@ -11,6 +12,8 @@ import shop.mit301.rocket.domain.User;
 import shop.mit301.rocket.repository.Admin_UserRepository;
 import shop.mit301.rocket.repository.PasswordResetTokenRepository;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -32,15 +35,18 @@ public class UserServiceImpl implements UserService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
         message.setSubject("아이디 찾기 결과");
-        message.setText("당신의 아이디는: " + user.getName());
+        message.setText("당신의 아이디는: " + user.getUserid());
 
         mailSender.send(message);
     }
 
     @Override
+    @Transactional
     public void sendPasswordResetLink(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("해당 이메일의 사용자가 존재하지 않습니다."));
+
+        tokenRepository.deleteByUser(user);
 
         String resetToken = UUID.randomUUID().toString();
 
@@ -52,9 +58,10 @@ public class UserServiceImpl implements UserService {
 
         tokenRepository.save(tokenEntity);
 
-        String link = "https://rocket.mit301.shop/changePwLink.html?token=" + resetToken;
+        String encodedToken = URLEncoder.encode(resetToken, StandardCharsets.UTF_8);
+        String link = "http://localhost:63342/rocket-frontend/public/changePwLink.html?token=" + encodedToken;
         String subject = "비밀번호 재설정 링크";
-        String body = "다음 링크를 클릭하여 비밀번호를 재설정하세요:\n" + link;
+        String body = "다음 링크를 주소창에 복사해서 붙여넣어 비밀번호를 재설정하세요:\n" + link;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
@@ -68,5 +75,4 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("메일 전송 실패");
         }
     }
-
 }
