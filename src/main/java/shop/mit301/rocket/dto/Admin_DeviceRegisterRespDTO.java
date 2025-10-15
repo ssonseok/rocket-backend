@@ -18,4 +18,5 @@ public class Admin_DeviceRegisterRespDTO {
     private int port;
     private boolean testSuccess;          // 테스트 통신 성공 여부
     private List<DeviceDataDTO> sensors;  // 연결된 센서 정보 (자동 생성)
+    private int dataCount;
 }

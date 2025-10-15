@@ -8,14 +8,21 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import shop.mit301.rocket.domain.Device;
+import shop.mit301.rocket.domain.DeviceData;
 import shop.mit301.rocket.dto.*;
+import shop.mit301.rocket.repository.Admin_DeviceRepository;
+import shop.mit301.rocket.service.Admin_DeviceDataService;
 import shop.mit301.rocket.service.Admin_DeviceService;
+import shop.mit301.rocket.websocket.EdgeWebSocketHandler;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/device")
@@ -24,26 +31,107 @@ import java.util.Map;
 public class Admin_DeviceController {
 
     private final Admin_DeviceService deviceService;
+    private final EdgeWebSocketHandler edgeHandler;
+    private final Admin_DeviceDataService deviceDataService;
+    private final Admin_DeviceRepository deviceRepository;
 
-    @Operation(summary = "장치 등록", description = "장치 정보 입력 후 등록. 성공하면 장치 데이터 입력 UI 활성화")
+
+    @Operation(summary = "장치 등록 및 데이터 확보", description = "장치 등록 후 엣지 연결 확인. 데이터가 없으면 대기 상태(pending) 반환.")
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> registerDevice(
-            @RequestBody Admin_DeviceRegisterReqDTO request) {
-
+    public ResponseEntity<Map<String, Object>> registerDevice(@RequestBody Admin_DeviceRegisterReqDTO request) {
+        // 1. 장치 정보 DB에 등록
         Admin_DeviceRegisterRespDTO resp = deviceService.registerDevice(request);
+        Map<String, Object> map = new HashMap<>();
 
-        Map<String, Object> response = new HashMap<>();
-        if (resp.isTestSuccess()) {
-            response.put("status", "success");
-            response.put("device", resp);
-            return ResponseEntity.ok(response);
-        } else {
-            response.put("status", "fail");
-            response.put("errorType", "duplicateSN");
-            response.put("device", resp);
-            return ResponseEntity.badRequest().body(response);
+        // 2. 등록 실패 (시리얼 넘버 중복) 처리
+        if (!resp.isTestSuccess()) {
+            map.put("status", "fail");
+            map.put("errorType", "duplicateSN");
+            return ResponseEntity.badRequest().body(map);
         }
+
+        // 3. 엣지 연결 확인
+        if (!edgeHandler.isConnected(request.getDeviceSerialNumber())) {
+            map.put("status", "fail");
+            map.put("errorType", "edgeNotConnected");
+            return ResponseEntity.badRequest().body(map);
+        }
+
+        // 4. DB에서 DeviceData 조회 (엣지 데이터 수신 여부 확인)
+        List<DeviceData> deviceDataList = deviceDataService.getDeviceDataList(resp.getDeviceSerialNumber());
+
+        // ✨ 5. DeviceData가 없는 경우 (엣지가 아직 데이터를 보내지 않은 경우)
+        if (deviceDataList.isEmpty()) {
+            // UI에게 "연결은 성공했으나 데이터가 아직 준비되지 않았으니 대기하라"고 전달
+            map.put("status", "pending");
+            map.put("message", "엣지 연결 성공. 센서 데이터 수신을 위해 잠시 기다려주세요.");
+            map.put("device", resp);
+            return ResponseEntity.ok(map);
+        }
+
+        // 6. DeviceData가 있는 경우 (폼 생성 데이터 확보 완료)
+
+        // DeviceData → DeviceDataDTO 변환
+        List<DeviceDataDTO> sensors = deviceDataList.stream()
+                .map(dd -> DeviceDataDTO.builder()
+                        .name(dd.getName())
+                        .min(dd.getMin())
+                        .max(dd.getMax())
+                        .referenceValue(dd.getReference_value())
+                        // Unit 엔티티가 null일 가능성을 대비하여 null 체크 로직 추가 권장
+                        .unitId(dd.getUnit() != null ? dd.getUnit().getUnitid() : 0)
+                        .build())
+                .collect(Collectors.toList());
+
+        // DTO에 세팅
+        resp.setSensors(sensors);
+        resp.setDataCount(sensors.size());
+
+        map.put("status", "success");
+        map.put("device", resp);
+        return ResponseEntity.ok(map);
     }
+    @Operation(summary = "등록된 장치의 센서 데이터 현황 확인", description = "이미 등록된 장치의 DeviceData 목록(센서 개수)을 조회하고 반환합니다.")
+    @GetMapping("/{serialNumber}/data-status")
+    public ResponseEntity<Map<String, Object>> getDataStatus(@PathVariable String serialNumber) {
+        Map<String, Object> map = new HashMap<>();
+
+        // 1. 장치가 DB에 있는지 확인
+        Device device = deviceRepository.findById(serialNumber).orElse(null);
+        if (device == null) {
+            map.put("status", "fail");
+            map.put("errorType", "deviceNotFound");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(map);
+        }
+
+        // 2. DeviceData 조회
+        List<DeviceData> deviceDataList = deviceDataService.getDeviceDataList(serialNumber);
+
+        if (deviceDataList.isEmpty()) {
+            // 데이터가 아직 생성되지 않은 상태
+            map.put("status", "pending");
+            map.put("message", "엣지 연결 성공. 데이터 수신 대기 중.");
+            map.put("dataCount", 0);
+            return ResponseEntity.ok(map);
+        }
+
+        // 3. 데이터 확보 완료 (폼 생성 가능)
+        List<Admin_DeviceDataRegisterRespDTO> sensors = deviceDataList.stream()
+                .map(dd -> Admin_DeviceDataRegisterRespDTO.builder()
+                        .name(dd.getName())
+                        .min(dd.getMin())
+                        .max(dd.getMax())
+                        .referenceValue(dd.getReference_value())
+                        .unitId(dd.getUnit() != null ? dd.getUnit().getUnitid() : 0)
+                        .build())
+                .collect(Collectors.toList());
+
+        map.put("status", "success");
+        map.put("dataCount", sensors.size());
+        map.put("sensors", sensors);
+        return ResponseEntity.ok(map);
+    }
+
 
     @Operation(
             summary = "장치 목록 조회",
@@ -74,14 +162,17 @@ public class Admin_DeviceController {
             @ApiResponse(responseCode = "400", description = "삭제 실패")
     })
     @DeleteMapping("/delete")
-    public ResponseEntity<Map<String, String>> deleteDevice(@RequestBody Admin_DeviceDeleteDTO dto) {
-        deviceService.deleteDevice(dto);
+    public ResponseEntity<String> deleteDevice(@RequestParam String deviceSerialNumber) {
+        try {
+            Admin_DeviceDeleteDTO dto = new Admin_DeviceDeleteDTO();
+            dto.setDeviceSerialNumber(deviceSerialNumber);
 
-        Map<String, String> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("errorType", "none");
-
-        return ResponseEntity.ok(response);
+            String result = deviceService.deleteDevice(dto);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("삭제 실패: " + e.getMessage());
+        }
     }
 
     // 장치 수정

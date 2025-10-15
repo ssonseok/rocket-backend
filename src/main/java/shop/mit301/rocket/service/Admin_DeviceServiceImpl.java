@@ -10,6 +10,7 @@ import shop.mit301.rocket.dto.*;
 import shop.mit301.rocket.repository.Admin_DeviceDataRepository;
 import shop.mit301.rocket.repository.Admin_DeviceRepository;
 import shop.mit301.rocket.repository.Admin_UnitRepository;
+import shop.mit301.rocket.websocket.ConnectionRegistry;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,22 +26,18 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
     private final Admin_UnitRepository adminUnitRepository;
     private final Admin_DeviceDataRepository adminDeviceDataRepository;
     private final ModelMapper modelMapper;
+    private final ConnectionRegistry connectionRegistry;
 
     @Override
     public boolean checkDuplicateSerialNumber(String deviceSerialNumber) {
         return adminDeviceRepository.existsByDeviceSerialNumber(deviceSerialNumber);
     }
 
-    @Override
-    public String testDeviceConnection(String ip, int port) {
-        //엣지없어서 항상 연결 성공처리
-        //===엣지구현되면 호출할 부분===
-        return "success";
-    }
+
 
     @Override
+    @Transactional
     public Admin_DeviceRegisterRespDTO registerDevice(Admin_DeviceRegisterReqDTO request) {
-        // 시리얼넘버 중복 체크
         if (checkDuplicateSerialNumber(request.getDeviceSerialNumber())) {
             return Admin_DeviceRegisterRespDTO.builder()
                     .deviceSerialNumber(request.getDeviceSerialNumber())
@@ -49,10 +46,11 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
                     .port(request.getPort())
                     .testSuccess(false)
                     .sensors(Collections.emptyList())
+                    .dataCount(0) // 중복이면 센서 없음
                     .build();
         }
 
-        // Device 저장
+        // 장치 등록
         Device device = Device.builder()
                 .deviceSerialNumber(request.getDeviceSerialNumber())
                 .name(request.getName())
@@ -62,15 +60,24 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
                 .build();
         adminDeviceRepository.save(device);
 
-        // 초기에는 장치데이터 없음 (엣지에서 수신 후 UI에서 입력)
+        // 등록 시점에는 DeviceData가 없으므로 0으로 설정
+        List<DeviceData> deviceDataList = adminDeviceDataRepository.findByDevice_DeviceSerialNumber(device.getDeviceSerialNumber());
+        int sensorCount = deviceDataList.size();
+
         return Admin_DeviceRegisterRespDTO.builder()
                 .deviceSerialNumber(device.getDeviceSerialNumber())
                 .name(device.getName())
                 .ip(device.getIp())
                 .port(device.getPort())
                 .testSuccess(true)
-                .sensors(Collections.emptyList())
+                .dataCount(sensorCount) // 0이면 프론트에서 폼 생성 안함
                 .build();
+    }
+
+    @Override
+    public Device getDevice(String serialNumber) {
+        return adminDeviceRepository.findById(serialNumber)
+                .orElseThrow(() -> new RuntimeException("Device 없음: " + serialNumber));
     }
 
     @Override
@@ -96,14 +103,16 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
     @Override
     @Transactional
     public String deleteDevice(Admin_DeviceDeleteDTO dto) {
-        String serial = dto.getDeviceSerialNumber();
+        Device device = adminDeviceRepository.findById(dto.getDeviceSerialNumber())
+                .orElseThrow(() -> new RuntimeException("Device not found"));
 
-        //연결된 장치 데이터 먼저 삭제
-        adminDeviceDataRepository.deleteByDevice_DeviceSerialNumber(serial);
+        // DeviceData와 MeasurementData 리스트를 강제로 fetch
+        device.getDevice_data_list().forEach(dd -> {
+            dd.getMeasurement_data_list().size(); // Lazy 강제 초기화
+            dd.getUser_device_data_list().size();
+        });
 
-        Device device = adminDeviceRepository.findById(serial).get();
-        adminDeviceRepository.delete(device);
-
+        adminDeviceRepository.delete(device); // Cascade로 하위 데이터까지 삭제
         return "success";
     }
 
@@ -170,6 +179,29 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
                 .deviceDataList(sensors)
                 .build();
     }
-
-
+    @Override
+    public String testDeviceConnection(String ip, int port) {
+//        // 최대 대기 시간(ms)
+//        final long TIMEOUT_MS = 5000;
+//        final long POLL_INTERVAL_MS = 100;
+//
+//        long startTime = System.currentTimeMillis();
+//
+//        while (System.currentTimeMillis() - startTime < TIMEOUT_MS) {
+//            if (connectionRegistry.isConnected(deviceSerialNumber)) {
+//                // 엣지와 연결된 세션 존재
+//                return "success";
+//            }
+//            try {
+//                Thread.sleep(POLL_INTERVAL_MS);
+//            } catch (InterruptedException e) {
+//                Thread.currentThread().interrupt();
+//                return "fail";
+//            }
+//        }
+//
+//        // 타임아웃 후에도 연결 안 됨
+//        return "fail";
+        return null;
+    }
 }

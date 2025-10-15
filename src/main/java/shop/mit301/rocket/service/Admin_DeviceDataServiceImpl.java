@@ -1,5 +1,6 @@
 package shop.mit301.rocket.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.Device;
@@ -24,55 +25,75 @@ public class Admin_DeviceDataServiceImpl implements Admin_DeviceDataService{
     private final Admin_DeviceDataRepository deviceDataRepository;
     private final Admin_UnitRepository unitRepository;
 
-    @Override
-    public List<Admin_DeviceDataDTO> getDeviceDataList(String deviceSerialNumber) {
-        List<DeviceData> dataList = deviceDataRepository.findByDevice_DeviceSerialNumber(deviceSerialNumber);
 
-        return dataList.stream().map(d -> {
-            Admin_DeviceDataDTO dto = new Admin_DeviceDataDTO();
-            dto.setName(d.getName());
-            dto.setUnit(d.getUnit().getUnit()); // 문자열 단위
-            return dto;
-        }).collect(Collectors.toList());
+
+    @Override
+    public List<DeviceData> getDeviceDataList(String deviceSerialNumber) {
+        return deviceDataRepository.findByDevice_DeviceSerialNumber(deviceSerialNumber);
     }
 
     @Override
+    @Transactional
     public List<Admin_DeviceDataRegisterRespDTO> registerDeviceData(
-            String deviceSerialNumber,
+            String serialNumber,
             List<Admin_DeviceDataRegisterReqDTO> requestList) {
 
-        Device device = deviceRepository.findById(deviceSerialNumber)
+        // 1. Device 조회
+        Device device = deviceRepository.findById(serialNumber)
                 .orElseThrow(() -> new RuntimeException("Device not found"));
+
+        // 2. 기존 DeviceData 조회 (엣지 연결 시 자동 생성된 임시 데이터)
+        List<DeviceData> existingDataList = deviceDataRepository.findByDevice_DeviceSerialNumber(serialNumber);
+
+        if (existingDataList.size() != requestList.size()) {
+            throw new RuntimeException("센서 개수 불일치: DB에 있는 개수(" + existingDataList.size() + ")와 요청 개수(" + requestList.size() + ")가 다릅니다.");
+        }
 
         List<Admin_DeviceDataRegisterRespDTO> result = new ArrayList<>();
 
-        for (Admin_DeviceDataRegisterReqDTO req : requestList) {
+        // 3. 기존 DeviceData 업데이트 (새로 INSERT 하지 않음)
+        for (int i = 0; i < requestList.size(); i++) {
+            Admin_DeviceDataRegisterReqDTO dto = requestList.get(i);
+            DeviceData dd = existingDataList.get(i); // 임시 데이터 객체
 
-            Unit unit = unitRepository.findById(req.getUnitId())
+            Unit unit = unitRepository.findById(dto.getUnitId())
                     .orElseThrow(() -> new RuntimeException("Unit not found"));
 
-            DeviceData data = DeviceData.builder()
-                    .device(device)
-                    .name(req.getName())
-                    .min(req.getMin())
-                    .max(req.getMax())
-                    .reference_value(req.getReferenceValue())
-                    .unit(unit)
-                    .build();
+            // ✨ 엔티티의 전용 업데이트 메서드 호출
+            dd.updateDataConfig(
+                    dto.getMin(),
+                    dto.getMax(),
+                    dto.getReferenceValue(),
+                    dto.getName(),
+                    unit
+            );
 
-            DeviceData savedData = deviceDataRepository.save(data);
-
-            Admin_DeviceDataRegisterRespDTO resp = new Admin_DeviceDataRegisterRespDTO();
-            resp.setName(savedData.getName());
-            resp.setMin(savedData.getMin());
-            resp.setMax(savedData.getMax());
-            resp.setReferenceValue(savedData.getReference_value());
-            resp.setUnitId(unit.getUnitid());
-            resp.setSaved(true);
-
-            result.add(resp);
+            result.add(Admin_DeviceDataRegisterRespDTO.builder()
+                    .name(dd.getName())
+                    .min(dd.getMin())
+                    .max(dd.getMax())
+                    .referenceValue(dd.getReference_value())
+                    .unitId(unit.getUnitid())
+                    .saved(true)
+                    .build());
         }
+
+        // 4. 최종 등록 완료 플래그 설정 (✨ 중요: 실시간 측정 시작 활성화)
+        device.completeDataConfiguration();
+        // @Transactional에 의해 자동으로 DB에 UPDATE 쿼리가 발생합니다.
 
         return result;
     }
+
+    //    @Override
+//    public List<Admin_DeviceDataDTO> getDeviceDataList(String deviceSerialNumber) {
+//        List<DeviceData> dataList = deviceDataRepository.findByDevice_DeviceSerialNumber(deviceSerialNumber);
+//
+//        return dataList.stream().map(d -> {
+//            Admin_DeviceDataDTO dto = new Admin_DeviceDataDTO();
+//            dto.setName(d.getName());
+//            dto.setUnit(d.getUnit().getUnit()); // 문자열 단위
+//            return dto;
+//        }).collect(Collectors.toList());
+//    }
 }

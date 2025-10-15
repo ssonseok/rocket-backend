@@ -1,5 +1,6 @@
 package shop.mit301.rocket.service;
 
+import shop.mit301.rocket.domain.Device;
 import shop.mit301.rocket.dto.*;
 
 import java.util.List;
@@ -11,6 +12,8 @@ public interface Admin_DeviceService {
     String testDeviceConnection(String ip, int port);
     // 장치 등록
     Admin_DeviceRegisterRespDTO registerDevice(Admin_DeviceRegisterReqDTO request);
+    Device getDevice(String serialNumber);
+
     //장비 목록
     List<Admin_DeviceListDTO> getDeviceList();
     //장비 삭제
@@ -22,5 +25,11 @@ public interface Admin_DeviceService {
     Admin_DeviceStatusTestDTO testDeviceConnection(String serialNumber);
     //수정화면에서 필요한 조회
     Admin_DeviceDetailDTO getDeviceDetail(String deviceSerialNumber);
+
+    //실제 엣지와 연결작업
+    //엣지에서 수신된 초기 센서 데이터 등록
+    //List<DeviceDataDTO> registerDeviceDataFromEdge(String deviceSerialNumber, List<DeviceDataDTO> dataList);
+
+
 
 }

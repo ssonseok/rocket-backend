@@ -39,9 +39,17 @@ public class DeviceData {
     @JoinColumn(name = "device_serial_number", nullable = false)
     private Device device;
 
-    @OneToMany(mappedBy = "devicedata")
+    @OneToMany(mappedBy = "devicedata", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeasurementData> measurement_data_list = new ArrayList<>();
 
-    @OneToMany(mappedBy = "devicedata")
+    @OneToMany(mappedBy = "devicedata", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<User_has_DeviceData> user_device_data_list = new ArrayList<>();
+
+    public void updateDataConfig(double min, double max, double referenceValue, String name, Unit unit) {
+        this.min = min;
+        this.max = max;
+        this.reference_value = referenceValue;
+        this.name = name;
+        this.unit = unit;
+    }
 }
