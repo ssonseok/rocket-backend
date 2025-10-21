@@ -3,6 +3,7 @@ package shop.mit301.rocket.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import shop.mit301.rocket.domain.PasswordResetToken;
@@ -26,6 +27,7 @@ public class UserController {
     private final UserServiceImpl userService;
     private final PasswordResetTokenRepository tokenRepository;
     private final JwtUtil jwtUtil;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @PostMapping("/findId")
     public ResponseEntity<Map<String, String>> findIdByEmail(@RequestBody Map<String, String> request) {
@@ -122,17 +124,27 @@ public class UserController {
 
         Optional<User> optionalUser = userRepository.findByUserid(userId);
 
-        if (optionalUser.isEmpty() || !optionalUser.get().getPw().equals(password)) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("status", "fail");
-            errorResponse.put("message", "아이디 또는 비밀번호가 일치하지 않습니다.");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        Map<String, String> response = new HashMap<>();
+
+        if (optionalUser.isEmpty()) {
+            response.put("status", "fail");
+            response.put("message", "아이디 또는 비밀번호가 일치하지 않습니다.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 
-        // 성공 응답: status 만 포함
-        Map<String, String> successResponse = new HashMap<>();
-        successResponse.put("status", "success");
-        successResponse.put("token", jwtUtil.generateToken(request.getUserid()));
-        return ResponseEntity.ok().body(successResponse);
+        User user = optionalUser.get();
+
+        // 평문 비밀번호 비교
+        if (!user.getPw().equals(password)) {
+            response.put("status", "fail");
+            response.put("message", "아이디 또는 비밀번호가 일치하지 않습니다.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+
+        String token = jwtUtil.generateToken(user.getUserid());
+
+        response.put("status", "success");
+        response.put("token", token);
+        return ResponseEntity.ok(response);
     }
 }
