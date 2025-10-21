@@ -20,16 +20,20 @@ public interface Admin_DeviceService {
     String deleteDevice(Admin_DeviceDeleteDTO dto);
     //장비 수정
     String modifyDevice(Admin_DeviceModifyReqDTO dto);
+
+
     //장비 상태보기
     Admin_DeviceStatusRespDTO getDeviceStatus(String serialNumber);
-    Admin_DeviceStatusTestDTO testDeviceConnection(String serialNumber);
+    //Service 패턴에 맞춰 String 반환으로 변경
+    String testDeviceConnection(String serialNumber);
+    //Controller가 테스트 성공 후 상세 결과를 조회할 메서드
+    Admin_DeviceStatusTestDTO getLatestTestResult(String serialNumber);
+
+
     //수정화면에서 필요한 조회
     Admin_DeviceDetailDTO getDeviceDetail(String deviceSerialNumber);
 
     //실제 엣지와 연결작업
     //엣지에서 수신된 초기 센서 데이터 등록
     //List<DeviceDataDTO> registerDeviceDataFromEdge(String deviceSerialNumber, List<DeviceDataDTO> dataList);
-
-
-
 }
