@@ -34,7 +34,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login", "/api/findId", "/api/changePw", "/api/changePwLink").permitAll() // ✅ 로그인 등은 허용
-                        .anyRequest().authenticated()
+                        .requestMatchers("/ws/**").permitAll()    // WebSocket
+                        .requestMatchers("/api/**").permitAll()   // 전체 API 인증 잠시 제거
+                        //.anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -44,7 +46,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:63342"));
+        configuration.setAllowedOrigins(List.of("http://localhost:63342"
+                ,
+                "http://192.168.1.119",
+                "http://192.168.1.11")
+        );
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

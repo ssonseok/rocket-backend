@@ -18,6 +18,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(handler, "/ws/edge").setAllowedOrigins("*");
+        registry.addHandler(handler, "/ws/edge")
+                .setAllowedOriginPatterns("*");
     }
 }

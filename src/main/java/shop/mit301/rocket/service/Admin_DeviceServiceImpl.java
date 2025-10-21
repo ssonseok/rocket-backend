@@ -40,10 +40,12 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
 
     // Helper: 응답 데이터의 이상 유무를 판단 (Service 내부에 추가)
     private String analyzeResponseData(String responseData) {
-        // 엣지 응답은 {"status":"succeed","data":[...]} 형태일 것이므로, 이를 분석합니다.
         try {
             JsonObject json = JsonParser.parseString(responseData).getAsJsonObject();
-            if ("succeed".equalsIgnoreCase(json.get("status").getAsString())) {
+            String status = json.get("status").getAsString();
+
+            // "success" 또는 "succeed" 둘 다 허용
+            if ("success".equalsIgnoreCase(status) || "succeed".equalsIgnoreCase(status)) {
                 return "OK";
             }
         } catch (Exception e) {
