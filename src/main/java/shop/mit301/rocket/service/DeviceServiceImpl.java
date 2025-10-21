@@ -2,7 +2,10 @@ package shop.mit301.rocket.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import shop.mit301.rocket.domain.DeviceData;
 import shop.mit301.rocket.domain.MeasurementData;
 import shop.mit301.rocket.domain.MeasurementDataId;
@@ -17,6 +20,7 @@ import shop.mit301.rocket.repository.UnitRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,6 +33,25 @@ public class DeviceServiceImpl implements DeviceService {
     private final MeasurementDataRepository measurementDataRepository;
     private final UnitRepository unitRepository;
     private final DeviceDataRepository deviceDataRepository;
+    private final RestTemplate restTemplate;
+
+    private LocalDateTime convertToLocalDateTime(Object periodObj, String unit) {
+        if (periodObj instanceof java.sql.Date) {
+            return ((java.sql.Date) periodObj).toLocalDate().atStartOfDay();
+        } else if (periodObj instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) periodObj).toLocalDateTime();
+        } else if (periodObj instanceof String) {
+            // 유연하게 대응
+            String str = (String) periodObj;
+            if (str.length() == 10) {
+                return LocalDateTime.parse(str + " 00:00:00", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } else {
+                return LocalDateTime.parse(str, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+        } else {
+            return LocalDateTime.now(); // fallback
+        }
+    }
 
     @Override
     public HistoryResponseDTO getHistory(HistoryRequestDTO request) {
@@ -44,32 +67,62 @@ public class DeviceServiceImpl implements DeviceService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        List<MeasurementData> measurements = measurementDataRepository.findAllByFilter(
-                request.getStartDate().atStartOfDay(),
-                request.getEndDate().atTime(23, 59, 59),
-                unitIds,
-                sensorIds
-        );
+        LocalDateTime start = request.getStartDate().atStartOfDay();
+        LocalDateTime end = request.getEndDate().atTime(23, 59, 59);
+        String unit = request.getUnit().toLowerCase();
 
+        List<Object[]> rawData;
+
+        switch (unit) {
+            case "daily": unit = "day"; break;
+            case "weekly": unit = "week"; break;
+            case "monthly": unit = "month"; break;
+            case "yearly": unit = "year"; break;
+        }
+
+        // 🔁 쿼리 분기
+        switch (unit) {
+            case "day":
+                rawData = measurementDataRepository.findAggregatedDaily(start, end, unitIds, sensorIds);
+                break;
+            case "week":
+                rawData = measurementDataRepository.findAggregatedWeekly(start, end, unitIds, sensorIds);
+                break;
+            case "month":
+                rawData = measurementDataRepository.findAggregatedMonthly(start, end, unitIds, sensorIds);
+                break;
+            case "year":
+                rawData = measurementDataRepository.findAggregatedYearly(start, end, unitIds, sensorIds);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid unit: " + unit);
+        }
+
+        // 📦 단위 정보 조회
         List<HistoryResponseDTO.UnitInfo> unitInfos = unitRepository.findAllById(unitIds).stream()
                 .map(u -> new HistoryResponseDTO.UnitInfo(u.getUnitid(), u.getUnit()))
                 .collect(Collectors.toList());
 
-        Map<LocalDateTime, List<MeasurementData>> grouped = measurements.stream()
-                .collect(Collectors.groupingBy(m -> truncateByUnit(m.getId().getMeasurementdate(), request.getUnit())));
+        // 🧩 period(LocalDateTime) -> List<SensorValue> 매핑
+        Map<LocalDateTime, List<HistoryResponseDTO.SensorValue>> grouped = new LinkedHashMap<>();
+
+        for (Object[] row : rawData) {
+            LocalDateTime period = convertToLocalDateTime(row[0], unit);
+            Integer unitId = ((Number) row[1]).intValue();
+            Integer sensorId = ((Number) row[2]).intValue();
+            Double avgValue = ((Number) row[3]).doubleValue();
+
+            Double referenceValue = 0.0;
+            if (row.length > 4 && row[4] != null) {
+                referenceValue = ((Number) row[4]).doubleValue();
+            }
+
+            grouped.computeIfAbsent(period, k -> new ArrayList<>())
+                    .add(new HistoryResponseDTO.SensorValue(sensorId, unitId, avgValue, referenceValue));
+        }
 
         List<HistoryResponseDTO.TimestampGroup> data = grouped.entrySet().stream()
-                .map(entry -> {
-                    List<HistoryResponseDTO.SensorValue> values = entry.getValue().stream()
-                            .map(m -> new HistoryResponseDTO.SensorValue(
-                                    m.getDevicedata().getDevicedataid(),
-                                    m.getDevicedata().getUnit().getUnitid(),
-                                    m.getMeasurementvalue(),
-                                    m.getDevicedata().getReference_value() // 기준값 포함
-                            )).collect(Collectors.toList());
-
-                    return new HistoryResponseDTO.TimestampGroup(entry.getKey(), values);
-                })
+                .map(entry -> new HistoryResponseDTO.TimestampGroup(entry.getKey(), entry.getValue()))
                 .sorted(Comparator.comparing(HistoryResponseDTO.TimestampGroup::getTimestamp))
                 .collect(Collectors.toList());
 
@@ -196,16 +249,22 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     public Double getSensorValue(String deviceSerial, Integer sensorId) {
-        // 예: TCP 소켓, MQTT 메시지, HTTP 요청 등 센서와의 통신 구현
+        String url = String.format("http://localhost:8080/api/sensors/%s/%d/value", deviceSerial, sensorId);
 
-        // 아래는 예시 — 실제 구현 시 센서 프로토콜에 따라 변경
-        // 예: 센서 데이터가 HTTP로 온다면:
-        // ResponseEntity<Double> response = restTemplate.getForEntity(url, Double.class);
-        // return response.getBody();
+        try {
+            ResponseEntity<Double> response = restTemplate.getForEntity(url, Double.class);
+            Double value = response.getBody();
 
-        // TODO: 실제 센서 통신 로직 구현 필요
-        throw new UnsupportedOperationException("센서 통신 구현 필요");
+            if (value != null) {
+                return value;
+            } else {
+                throw new RuntimeException("센서 데이터가 없습니다.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("센서 통신 실패", e);
+        }
     }
+
     @Override
     public List<SensorResponseDTO> getAllSensors() {
         List<DeviceData> sensors = deviceDataRepository.findAll();

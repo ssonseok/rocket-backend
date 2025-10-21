@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import shop.mit301.rocket.domain.PasswordResetToken;
 import shop.mit301.rocket.domain.User;
 import shop.mit301.rocket.dto.UserDTO;
+import shop.mit301.rocket.jwt.JwtUtil;
 import shop.mit301.rocket.repository.Admin_UserRepository;
 import shop.mit301.rocket.repository.PasswordResetTokenRepository;
 import shop.mit301.rocket.service.UserServiceImpl;
@@ -24,6 +25,7 @@ public class UserController {
     private final Admin_UserRepository userRepository;
     private final UserServiceImpl userService;
     private final PasswordResetTokenRepository tokenRepository;
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/findId")
     public ResponseEntity<Map<String, String>> findIdByEmail(@RequestBody Map<String, String> request) {
@@ -130,6 +132,7 @@ public class UserController {
         // 성공 응답: status 만 포함
         Map<String, String> successResponse = new HashMap<>();
         successResponse.put("status", "success");
-        return ResponseEntity.ok(successResponse);
+        successResponse.put("token", jwtUtil.generateToken(request.getUserid()));
+        return ResponseEntity.ok().body(successResponse);
     }
 }

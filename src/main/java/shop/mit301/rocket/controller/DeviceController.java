@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import shop.mit301.rocket.dto.HistoryRequestDTO;
 import shop.mit301.rocket.dto.HistoryResponseDTO;
 import shop.mit301.rocket.dto.SensorResponseDTO;
+import shop.mit301.rocket.repository.MeasurementDataRepository;
 import shop.mit301.rocket.service.DeviceService;
 
 import java.util.Arrays;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 public class DeviceController {
 
     private final DeviceService deviceService;
+    private final MeasurementDataRepository measurementDataRepository;
 
     @PostMapping("/history")
     public ResponseEntity<HistoryResponseDTO> getHistory(@RequestBody HistoryRequestDTO request) {
@@ -42,5 +44,16 @@ public class DeviceController {
                 .collect(Collectors.toList());
         return deviceService.collectAndSend(ids);
     }
+
+    @GetMapping("/sensors/{deviceSerial}/{sensorId}/value")
+    public ResponseEntity<Double> getSensorValue(
+            @PathVariable String deviceSerial,
+            @PathVariable Integer sensorId) {
+        return measurementDataRepository
+                .findTopByDevicedata_Device_DeviceSerialNumberAndDevicedata_DevicedataidOrderById_MeasurementdateDesc(deviceSerial, sensorId)
+                .map(data -> ResponseEntity.ok(data.getMeasurementvalue()))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
 
 }
