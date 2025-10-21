@@ -32,6 +32,7 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final Gson gson = new Gson();
     private final Admin_UnitRepository unitRepository;
+    private final ConnectionRegistry connectionRegistry;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -42,6 +43,9 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
         }
         String serial = query.split("=")[1];
         sessions.put(serial, session);
+
+        connectionRegistry.register(serial, session);
+
         System.out.println("엣지 연결됨: " + serial);
     }
 
@@ -49,26 +53,36 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
         System.out.println("엣지 데이터 수신: " + message.getPayload());
         JsonObject json = JsonParser.parseString(message.getPayload()).getAsJsonObject();
 
+        // ----------------------------------------------------------------------
+        // ✅ 1. 테스트 응답 메시지 처리 로직 추가
+        // ----------------------------------------------------------------------
+        if (json.has("type") && "TEST_RESPONSE".equalsIgnoreCase(json.get("type").getAsString())) {
+            if (json.has("commandId")) {
+                String commandId = json.get("commandId").getAsString();
+                // ConnectionRegistry에 응답을 전달하여 Service 스레드를 해제합니다.
+                connectionRegistry.setResponse(commandId, message.getPayload());
+                System.out.println("테스트 응답 수신 및 처리 완료: CommandID=" + commandId);
+                return; // 테스트 응답 처리를 완료하고 기존 측정 데이터 로직은 건너뜁니다.
+            }
+        }
+        // ----------------------------------------------------------------------
+
         if (!"succeed".equalsIgnoreCase(json.get("status").getAsString())) return;
 
         String serial = json.get("serialNumber").getAsString();
         int[] values = gson.fromJson(json.get("data"), int[].class);
 
-        // 1. Device 조회
         Device device = deviceRepository.findById(serial)
                 .orElseThrow(() -> new RuntimeException("등록되지 않은 장비: " + serial));
 
-        // 2. DeviceData 조회
         List<DeviceData> deviceDataList = deviceDataRepository.findByDevice_DeviceSerialNumber(serial);
 
-        // 3. DeviceData 없으면 엣지 데이터 길이만큼 생성
         if (deviceDataList.isEmpty()) {
             Unit defaultUnit = unitRepository.findById(1) // 기본 단위
                     .orElseThrow(() -> new RuntimeException("기본 Unit 없음"));
 
             deviceDataList = new ArrayList<>();
             for (int i = 0; i < values.length; i++) {
-                // ... (기존 DeviceData Builder 로직 유지) ...
                 DeviceData data = DeviceData.builder()
                         .device(device)
                         .name("데이터 " + (i + 1))
@@ -82,21 +96,14 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
             }
             System.out.println("DeviceData " + values.length + "개 자동 생성 완료: 시리얼=" + serial);
 
-            // ✨ 수정: 임시 데이터가 생성된 경우, 아직 최종 등록 전이므로 측정값 저장을 건너뛰고 함수 종료
             return;
         }
-
-        // 4. MeasurementData 저장 (✨ 수정된 부분: 장비 설정 완료 플래그 확인)
-
-        // 장치 데이터 설정이 완료되지 않았다면 측정을 건너뜁니다.
-        // Device 엔티티에 추가된 isDataConfigured() 메서드를 사용합니다.
 
         if (!device.is_data_configured()) {
             System.out.println("장비 데이터 설정이 완료되지 않아 측정값 저장을 건너뜁니다: " + serial);
             return;
         }
 
-        // ✨ 최종 등록이 완료된 경우에만 아래 로직 실행
         List<Double> doubleValues = Arrays.stream(values)
                 .mapToDouble(i -> (double) i)
                 .boxed()
@@ -110,10 +117,10 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessions.values().removeIf(s -> s.getId().equals(session.getId()));
+        connectionRegistry.unregister(session);
         System.out.println("엣지 연결 종료: " + session.getId());
     }
 

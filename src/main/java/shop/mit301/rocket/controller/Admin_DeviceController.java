@@ -91,6 +91,7 @@ public class Admin_DeviceController {
         map.put("device", resp);
         return ResponseEntity.ok(map);
     }
+
     @Operation(summary = "등록된 장치의 센서 데이터 현황 확인", description = "이미 등록된 장치의 DeviceData 목록(센서 개수)을 조회하고 반환합니다.")
     @GetMapping("/{serialNumber}/data-status")
     public ResponseEntity<Map<String, Object>> getDataStatus(@PathVariable String serialNumber) {
@@ -208,6 +209,50 @@ public class Admin_DeviceController {
         Admin_DeviceDetailDTO detailDTO = deviceService.getDeviceDetail(deviceSerialNumber);
         return ResponseEntity.ok(detailDTO);
     }
+
+    // =========================================================================
+    // ✅ 1021: 상태 보기 및 테스트 기능 추가 영역
+    // =========================================================================
+
+    @Operation(summary = "장비 상태 보기 기본 정보", description = "상태 화면에 필요한 장치명, 시리얼넘버 등 기본 정보를 조회합니다.")
+    @GetMapping("/status/{serialNumber}")
+    public ResponseEntity<Admin_DeviceStatusRespDTO> getDeviceStatus(@PathVariable String serialNumber) {
+        // Service에서 Device 정보를 조회하여 DTO를 반환
+        Admin_DeviceStatusRespDTO status = deviceService.getDeviceStatus(serialNumber);
+        return ResponseEntity.ok(status);
+    }
+
+    @Operation(summary = "장치 연결 테스트 실행", description = "엣지 장치와의 WebSocket 통신을 통해 연결 및 데이터 수신 테스트를 실행합니다. 결과는 'success' 또는 'fail'만 반환합니다.")
+    @GetMapping("/test/{serialNumber}")
+    public ResponseEntity<Map<String, String>> testDeviceConnection(@PathVariable String serialNumber) {
+        Map<String, String> response = new HashMap<>();
+        try {
+            // Service는 테스트 후 캐시에 상세 결과를 저장하고, "success" 또는 "fail" 문자열만 반환
+            String result = deviceService.testDeviceConnection(serialNumber);
+
+            response.put("status", result);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // 통신 오류, 타임아웃, 장치 없음 등 모든 예외 처리
+            // UI에 fail을 반환하고 상세 메시지를 포함 (옵션)
+            response.put("status", "fail");
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @Operation(summary = "최근 테스트 결과 상세 조회", description = "테스트 성공 후, Service의 캐시에 저장된 상세 테스트 결과 DTO를 조회합니다.")
+    @GetMapping("/test/result/{serialNumber}")
+    public ResponseEntity<Admin_DeviceStatusTestDTO> getLatestTestResult(@PathVariable String serialNumber) {
+        // Service에서 캐시된 DTO를 가져와 UI에 상세 정보를 제공합니다.
+        // 캐시된 결과가 없으면 Service에서 RuntimeException을 던질 수 있습니다.
+        Admin_DeviceStatusTestDTO resultDTO = deviceService.getLatestTestResult(serialNumber);
+        return ResponseEntity.ok(resultDTO);
+    }
+    // =========================================================================
+    // ✅ 1021: 상태 보기 및 테스트 기능 추가 영역 끝
+    // =========================================================================
 }
+
 
 
