@@ -134,7 +134,6 @@ public class UserController {
 
         User user = optionalUser.get();
 
-        // 평문 비밀번호 비교
         if (!user.getPw().equals(password)) {
             response.put("status", "fail");
             response.put("message", "아이디 또는 비밀번호가 일치하지 않습니다.");
@@ -145,6 +144,8 @@ public class UserController {
 
         response.put("status", "success");
         response.put("token", token);
+        response.put("permission", String.valueOf(user.getPermission()));
+
         return ResponseEntity.ok(response);
     }
 }

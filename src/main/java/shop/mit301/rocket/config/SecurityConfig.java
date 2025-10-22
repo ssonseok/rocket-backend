@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/login", "/api/findId", "/api/changePw", "/api/changePwLink").permitAll() // ✅ 로그인 등은 허용
+                        .requestMatchers("/api/login", "/api/findId", "/api/changePw", "/api/changePwLink", "/api/**").permitAll() // ✅ 로그인 등은 허용
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
