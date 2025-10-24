@@ -12,11 +12,15 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class Admin_DeviceRegisterRespDTO {
+
     private String deviceSerialNumber;
     private String name;
-    private String ip;
-    private int port;
-    private boolean testSuccess;          // 테스트 통신 성공 여부
-    private List<DeviceDataDTO> sensors;  // 연결된 센서 정보 (자동 생성)
+
+    // 💡 [제거] ip/port 제거
+    // private String ip;
+    // private int port;
+
+    private boolean testSuccess;
     private int dataCount;
+    private List<DeviceDataDTO> sensors; // 불필요 시 제거
 }

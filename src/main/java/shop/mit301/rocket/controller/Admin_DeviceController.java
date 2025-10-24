@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,22 +37,82 @@ public class Admin_DeviceController {
     private final Admin_DeviceRepository deviceRepository;
 
 
+    @Operation(summary = "엣지 게이트웨이 등록", description = "새로운 엣지 게이트웨이 마스터 정보를 시스템에 등록합니다.")
+    @PostMapping("/edge/register")
+    public ResponseEntity<String> registerEdge(@RequestBody EdgeRegisterReqDTO request) {
+        try {
+            deviceService.registerEdge(request);
+            return ResponseEntity.ok("success");
+        } catch (IllegalArgumentException e) {
+            // 예를 들어, 시리얼 중복 시 409 Conflict 반환
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("fail: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("fail: 엣지 등록 중 오류 발생");
+        }
+    }
+
+    @Operation(summary = "엣지 게이트웨이 목록 조회", description = "등록된 모든 엣지 게이트웨이 목록과 연결 장비 수를 반환합니다.")
+    @GetMapping("/edge/list")
+    public ResponseEntity<List<EdgeListDTO>> getEdgeList() {
+        List<EdgeListDTO> edgeList = deviceService.getEdgeList();
+        return ResponseEntity.ok(edgeList);
+    }
+
+
     @Operation(summary = "장치 등록 및 데이터 확보", description = "장치 등록 후 엣지 연결 확인. 데이터가 없으면 대기 상태(pending) 반환.")
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> registerDevice(@RequestBody Admin_DeviceRegisterReqDTO request) {
-        // 1. 장치 정보 DB에 등록
-        Admin_DeviceRegisterRespDTO resp = deviceService.registerDevice(request);
         Map<String, Object> map = new HashMap<>();
+        Admin_DeviceRegisterRespDTO resp; // Service 응답 DTO를 미리 선언합니다.
 
-        // 2. 등록 실패 (시리얼 넘버 중복) 처리
+        try {
+            // 1. 장치 정보 DB에 등록 (여기서 외래 키 제약 조건 오류 발생 가능)
+            resp = deviceService.registerDevice(request);
+
+            // 💡 [수정] DataIntegrityViolationException을 명시적으로 처리
+        } catch (DataIntegrityViolationException e) {
+            // DataIntegrityViolationException 발생 시, Root Cause를 찾음
+            Throwable rootCause = e;
+            while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+                rootCause = rootCause.getCause();
+            }
+
+            String errorMessage = rootCause.getMessage() != null ? rootCause.getMessage().toLowerCase() : "";
+
+            // 외래 키 제약 조건 위반이 발생한 경우 (엣지 시리얼 넘버가 DB에 없는 경우)
+            // SQLIntegrityConstraintViolationException 메시지를 포함할 가능성이 높은지 체크
+            if (errorMessage.contains("foreign key constraint fails") || errorMessage.contains("edge_serial") || errorMessage.contains("cannot add or update a child row")) {
+                map.put("status", "fail");
+                map.put("errorType", "edgeNotFoundInDB");
+                map.put("message", "등록하려는 엣지 시리얼 넘버(" + request.getEdgeSerial() + ")가 시스템에 등록되어 있지 않습니다. 엣지 게이트웨이 마스터 관리를 확인해 주세요.");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(map);
+            }
+
+            // DataIntegrityViolationException이지만 외래 키 위반이 아닌 경우 (예: Not Null 위반)
+            map.put("status", "fail");
+            map.put("errorType", "dataValidationError");
+            map.put("message", "데이터 유효성 오류: " + rootCause.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(map);
+
+        } catch (Exception e) {
+            // 그 외 알 수 없는 서버 오류
+            map.put("status", "fail");
+            map.put("errorType", "internalServerError");
+            map.put("message", "장치 등록 중 알 수 없는 서버 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(map);
+        }
+
+        // 2. 등록 실패 (resp.isTestSuccess()가 false인 경우, 주로 시리얼/포트 중복) 처리
         if (!resp.isTestSuccess()) {
             map.put("status", "fail");
-            map.put("errorType", "duplicateSN");
+            // 엣지 관련 오류 메시지를 DTO에서 받아와서 사용자에게 보여줄 수 있도록 개선 필요
+            map.put("errorType", "duplicateSN_or_PortPath");
             return ResponseEntity.badRequest().body(map);
         }
 
         // 3. 엣지 연결 확인
-        if (!edgeHandler.isConnected(request.getDeviceSerialNumber())) {
+        // 💡 [오류 수정]: Device Serial이 아닌 Edge Serial로 엣지와의 WebSocket 연결 상태를 확인
+        if (!edgeHandler.isConnected(request.getEdgeSerial())) {
             map.put("status", "fail");
             map.put("errorType", "edgeNotConnected");
             return ResponseEntity.badRequest().body(map);
@@ -70,16 +131,21 @@ public class Admin_DeviceController {
         }
 
         // 6. DeviceData가 있는 경우 (폼 생성 데이터 확보 완료)
-
-        // DeviceData → DeviceDataDTO 변환
+        // 💡 [수정] DeviceData ID를 엔티티의 실제 Getter인 getDevicedataid()를 사용하도록 수정했습니다.
         List<DeviceDataDTO> sensors = deviceDataList.stream()
                 .map(dd -> DeviceDataDTO.builder()
+                        .deviceDataId(dd.getDevicedataid()) // 💡 [최종 수정] DeviceData ID (getDevicedataid() 사용)
                         .name(dd.getName())
                         .min(dd.getMin())
                         .max(dd.getMax())
                         .referenceValue(dd.getReference_value())
-                        // Unit 엔티티가 null일 가능성을 대비하여 null 체크 로직 추가 권장
+                        // Unit 정보
                         .unitId(dd.getUnit() != null ? dd.getUnit().getUnitid() : 0)
+                        // Unit 엔티티의 .getUnit()이 단위 이름(String)을 반환한다고 가정
+                        .unitName(dd.getUnit() != null ? dd.getUnit().getUnit() : "N/A")
+                        // Device 정보
+                        .deviceSerialNumber(dd.getDevice().getDeviceSerialNumber())
+                        .deviceName(dd.getDevice().getName())
                         .build())
                 .collect(Collectors.toList());
 
@@ -117,13 +183,20 @@ public class Admin_DeviceController {
         }
 
         // 3. 데이터 확보 완료 (폼 생성 가능)
-        List<Admin_DeviceDataRegisterRespDTO> sensors = deviceDataList.stream()
-                .map(dd -> Admin_DeviceDataRegisterRespDTO.builder()
+        // 💡 [수정] 일관성을 위해 DeviceDataDTO를 사용하며, 모든 상세 필드를 매핑합니다. (getDevicedataid() 사용)
+        List<DeviceDataDTO> sensors = deviceDataList.stream()
+                .map(dd -> DeviceDataDTO.builder()
+                        .deviceDataId(dd.getDevicedataid()) // 💡 [최종 수정] DeviceData ID (getDevicedataid() 사용)
                         .name(dd.getName())
                         .min(dd.getMin())
                         .max(dd.getMax())
                         .referenceValue(dd.getReference_value())
+                        // Unit 정보
                         .unitId(dd.getUnit() != null ? dd.getUnit().getUnitid() : 0)
+                        .unitName(dd.getUnit() != null ? dd.getUnit().getUnit() : "N/A") // Unit Name (단위 이름)
+                        // Device 정보
+                        .deviceSerialNumber(dd.getDevice().getDeviceSerialNumber())
+                        .deviceName(dd.getDevice().getName())
                         .build())
                 .collect(Collectors.toList());
 
@@ -177,7 +250,7 @@ public class Admin_DeviceController {
     }
 
     // 장치 수정
-    @Operation(summary = "장치 수정", description = "특정 장치 정보를 수정합니다. IP/Port 테스트 성공 시만 수정 가능")
+    @Operation(summary = "장치 수정", description = "특정 장치 정보를 수정합니다. EdgeSerial/PortPath 테스트 성공 시만 수정 가능")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "수정 성공"),
             @ApiResponse(responseCode = "200", description = "수정 실패 (테스트 실패 시)")
@@ -249,10 +322,5 @@ public class Admin_DeviceController {
         Admin_DeviceStatusTestDTO resultDTO = deviceService.getLatestTestResult(serialNumber);
         return ResponseEntity.ok(resultDTO);
     }
-    // =========================================================================
-    // ✅ 1021: 상태 보기 및 테스트 기능 추가 영역 끝
-    // =========================================================================
+
 }
-
-
-

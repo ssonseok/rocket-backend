@@ -43,24 +43,33 @@ public class ConnectionRegistry {
     /**
      * Service에서 호출: 엣지에 테스트 명령을 보내고 응답을 동기적으로 기다립니다.
      */
-    public String requestTestAndGetResponse(String deviceSerial) throws Exception {
-        WebSocketSession session = getSession(deviceSerial);
+    public String requestTestAndGetResponse(String edgeSerial, String deviceSerial, String portPath) throws Exception {
+
+        // 1. 엣지 시리얼로 세션 조회
+        // (ConnectionRegistry의 getSession 메서드가 edgeSerial을 키로 사용하도록 수정되어야 함)
+        WebSocketSession session = getSession(edgeSerial);
+
         if (session == null || !session.isOpen()) {
-            throw new IllegalStateException("장치 [" + deviceSerial + "]의 WebSocket 연결이 활성화되어 있지 않습니다.");
+            throw new IllegalStateException("Edge Gateway [" + edgeSerial + "]의 WebSocket 연결이 활성화되어 있지 않습니다.");
         }
 
-        // 1. Command ID 및 메시지 생성
-        String commandId = deviceSerial + "-" + System.currentTimeMillis() + "-" + RANDOM.nextInt(1000);
-        String testCommand = "{\"type\": \"TEST_REQUEST\", \"commandId\": \"" + commandId + "\"}";
+        // 2. Command ID 및 메시지 생성
+        String commandId = edgeSerial + "-" + deviceSerial + "-" + System.currentTimeMillis();
+
+        // 💡 [수정] JSON에 deviceSerial과 portPath를 포함하여, 엣지 게이트웨이가 실제 통신할 포트를 지정해 줍니다.
+        String testCommand = String.format(
+                "{\"type\": \"TEST_REQUEST\", \"commandId\": \"%s\", \"deviceSerial\": \"%s\", \"portPath\": \"%s\"}",
+                commandId, deviceSerial, portPath
+        );
 
         try {
-            // 2. 메시지 전송
+            // 3. 메시지 전송
             session.sendMessage(new TextMessage(testCommand));
         } catch (IOException e) {
             throw new RuntimeException("WebSocket 메시지 전송 실패: " + e.getMessage());
         }
 
-        // 3. 응답 대기 (동기적 처리)
+        // 4. 응답 대기 (동기적 처리)
         return waitForResponse(commandId, TIMEOUT_MS);
     }
 

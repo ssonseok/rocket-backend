@@ -10,8 +10,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class Admin_DeviceModifyReqDTO {
-    private String deviceSerialNumber; //화ㅓ면에서 readonly
+
+    private String deviceSerialNumber;
+
+    // 💡 [수정] ip/port 제거, edgeSerial 추가
+    private String edgeSerial;
+
+    // 💡 [수정] portPath 추가
+    private String portPath;
+
     private String name;
-    private String ip;
-    private int port;
 }

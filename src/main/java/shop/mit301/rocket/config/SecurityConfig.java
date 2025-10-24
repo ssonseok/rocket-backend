@@ -35,7 +35,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login", "/api/findId", "/api/changePw", "/api/changePwLink").permitAll() // ✅ 로그인 등은 허용
                         .requestMatchers("/ws/**").permitAll()    // WebSocket
-                        .requestMatchers("/api/**").permitAll()   // 전체 API 인증 잠시 제거
+                        .requestMatchers("/api/**").permitAll()// 전체 API 인증 잠시 제거
+                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         //.anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

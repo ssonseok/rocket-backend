@@ -11,9 +11,15 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class Admin_DeviceDetailDTO {
+
     private String deviceSerialNumber;
     private String name;
-    private String ip;
-    private int port;
+
+    // 💡 [수정] ip/port 제거, edgeSerial 추가
+    private String edgeSerial;
+
+    // 💡 [수정] portPath 추가
+    private String portPath;
+
     private List<Admin_DeviceDataRegisterRespDTO> deviceDataList;
 }

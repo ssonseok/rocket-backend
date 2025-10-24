@@ -19,6 +19,13 @@ public class DeviceData {
     @Column(nullable = false, name = "device_data_id")
     private int devicedataid;
 
+    @Column(nullable = false, name = "data_index")
+    private int dataIndex;
+
+    @Column(nullable = false, name = "is_configured")
+    private boolean isConfigured;
+
+
     @Column(nullable = false)
     private double min;
 
@@ -52,4 +59,5 @@ public class DeviceData {
         this.name = name;
         this.unit = unit;
     }
+
 }

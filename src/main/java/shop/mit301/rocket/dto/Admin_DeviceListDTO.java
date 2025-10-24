@@ -13,8 +13,14 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class Admin_DeviceListDTO {
+
     private String deviceSerialNumber;
     private String deviceName;
     private LocalDateTime createdDate;
+
+    // 💡 [추가] 엣지 시리얼 및 포트 경로
+    private String edgeSerial;
+    private String portPath;
+
     private List<String> dataNames;
 }

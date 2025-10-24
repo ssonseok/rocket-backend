@@ -16,10 +16,7 @@ import shop.mit301.rocket.repository.Admin_DeviceRepository;
 import shop.mit301.rocket.repository.Admin_UnitRepository;
 import shop.mit301.rocket.service.Admin_DeviceDataMeasureService;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -37,59 +34,87 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         String query = session.getUri().getQuery();
-        if (query == null || !query.startsWith("deviceSerial=")) {
+
+        //  [수정] 쿼리 파라미터 체크를 'edgeSerial='로 변경
+        if (query == null || !query.startsWith("edgeSerial=")) {
             session.close(CloseStatus.BAD_DATA);
             return;
         }
-        String serial = query.split("=")[1];
-        sessions.put(serial, session);
 
-        connectionRegistry.register(serial, session);
+        // [수정] 추출하는 키를 'edgeSerial'로 변경
+        String edgeSerial = query.split("=")[1];
 
-        System.out.println("엣지 연결됨: " + serial);
+
+        //  핵심 수정: 새로운 연결이 들어오면 기존 세션을 명시적으로 닫고 제거합니다.
+        WebSocketSession oldSession = sessions.get(edgeSerial);
+        if (oldSession != null && oldSession.isOpen()) {
+            System.out.println("기존 세션 종료 처리: " + edgeSerial + " (" + oldSession.getId() + ")");
+            oldSession.close(CloseStatus.POLICY_VIOLATION); // 정책 위반으로 닫아 엣지 앱이 재연결하도록 유도
+            sessions.remove(edgeSerial); // 세션 맵에서 제거
+            connectionRegistry.unregister(oldSession); // ConnectionRegistry에서도 제거
+        }
+
+        //  [수정] 세션 맵의 키를 'edgeSerial'로 사용
+        sessions.put(edgeSerial, session);
+
+        //  [수정] ConnectionRegistry에도 'edgeSerial'로 등록
+        connectionRegistry.register(edgeSerial, session);
+
+        System.out.println("엣지 연결됨: " + edgeSerial);
     }
 
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         System.out.println("엣지 데이터 수신: " + message.getPayload());
         JsonObject json = JsonParser.parseString(message.getPayload()).getAsJsonObject();
 
-        // ----------------------------------------------------------------------
-        // ✅ 1. 테스트 응답 메시지 처리 로직 추가
-        // ----------------------------------------------------------------------
         if (json.has("type") && "TEST_RESPONSE".equalsIgnoreCase(json.get("type").getAsString())) {
             if (json.has("commandId")) {
                 String commandId = json.get("commandId").getAsString();
-                // ConnectionRegistry에 응답을 전달하여 Service 스레드를 해제합니다.
                 connectionRegistry.setResponse(commandId, message.getPayload());
                 System.out.println("테스트 응답 수신 및 처리 완료: CommandID=" + commandId);
-                return; // 테스트 응답 처리를 완료하고 기존 측정 데이터 로직은 건너뜁니다.
+                return;
             }
         }
-        // ----------------------------------------------------------------------
 
-        if (!"succeed".equalsIgnoreCase(json.get("status").getAsString())) return;
+        if (json.has("status")) {
+            if (!"succeed".equalsIgnoreCase(json.get("status").getAsString())) return;
+        }
+        // status 필드가 없으면(즉, 일반 DATA_STREAM 메시지라면) 계속 진행합니다.
 
         String serial = json.get("serialNumber").getAsString();
-        int[] values = gson.fromJson(json.get("data"), int[].class);
 
-        Device device = deviceRepository.findById(serial)
-                .orElseThrow(() -> new RuntimeException("등록되지 않은 장비: " + serial));
+        // 💡 [핵심 수정 시작]: orElseThrow를 제거하고 Optional로 장비 존재 여부만 확인합니다.
+        Optional<Device> deviceOptional = deviceRepository.findById(serial);
+
+        if (deviceOptional.isEmpty()) {
+            System.err.println("경고: 장비 [" + serial + "]가 아직 DB에 등록되지 않아 데이터 처리를 건너뛰고 세션을 유지합니다.");
+            return; // 세션을 닫지 않고 함수 종료
+        }
+
+        Device device = deviceOptional.get();
+        // 💡 [핵심 수정 종료]
+
+        double[] values = gson.fromJson(json.get("data"), double[].class); // int[] -> double[]로 변경
 
         List<DeviceData> deviceDataList = deviceDataRepository.findByDevice_DeviceSerialNumber(serial);
 
         if (deviceDataList.isEmpty()) {
+
             Unit defaultUnit = unitRepository.findById(1) // 기본 단위
                     .orElseThrow(() -> new RuntimeException("기본 Unit 없음"));
 
             deviceDataList = new ArrayList<>();
-            for (int i = 0; i < values.length; i++) {
+            for (int i = 0; i < values.length; i++) { // values는 이제 double[]
                 DeviceData data = DeviceData.builder()
                         .device(device)
                         .name("데이터 " + (i + 1))
+                        .dataIndex(i)
+                        .isConfigured(false)
                         .min(0)
                         .max(1000)
                         .reference_value(0)
                         .unit(defaultUnit)
+
                         .build();
                 deviceDataRepository.save(data); // DB에 저장 (임시 데이터 확보)
                 deviceDataList.add(data);
@@ -100,13 +125,13 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
         }
 
         if (!device.is_data_configured()) {
-            System.out.println("장비 데이터 설정이 완료되지 않아 측정값 저장을 건너뜁니다: " + serial);
+            System.out.println("장비 데이터 설정이 완료되지 않아 측정값 저장을 건너킵니다: " + serial);
             return;
         }
 
+        // 🚨 핵심 수정 3: values가 double[]이므로, 스트림 변환도 그에 맞게 변경합니다.
         List<Double> doubleValues = Arrays.stream(values)
-                .mapToDouble(i -> (double) i)
-                .boxed()
+                .boxed() // double[]을 List<Double>로 바로 변환
                 .toList();
 
         try {

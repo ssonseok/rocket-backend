@@ -85,15 +85,4 @@ public class Admin_DeviceDataServiceImpl implements Admin_DeviceDataService{
         return result;
     }
 
-    //    @Override
-//    public List<Admin_DeviceDataDTO> getDeviceDataList(String deviceSerialNumber) {
-//        List<DeviceData> dataList = deviceDataRepository.findByDevice_DeviceSerialNumber(deviceSerialNumber);
-//
-//        return dataList.stream().map(d -> {
-//            Admin_DeviceDataDTO dto = new Admin_DeviceDataDTO();
-//            dto.setName(d.getName());
-//            dto.setUnit(d.getUnit().getUnit()); // 문자열 단위
-//            return dto;
-//        }).collect(Collectors.toList());
-//    }
 }
