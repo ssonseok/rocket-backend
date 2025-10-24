@@ -37,4 +37,7 @@ public class User {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private PasswordResetToken passwordResetToken;
+
+    @Lob
+    private String graphData;
 }

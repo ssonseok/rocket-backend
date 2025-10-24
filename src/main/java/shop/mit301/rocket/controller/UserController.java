@@ -1,5 +1,6 @@
 package shop.mit301.rocket.controller;
 
+import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,12 +10,15 @@ import org.springframework.web.bind.annotation.*;
 import shop.mit301.rocket.domain.PasswordResetToken;
 import shop.mit301.rocket.domain.User;
 import shop.mit301.rocket.dto.UserDTO;
+import shop.mit301.rocket.jwt.JwtTokenProvider;
 import shop.mit301.rocket.jwt.JwtUtil;
 import shop.mit301.rocket.repository.Admin_UserRepository;
 import shop.mit301.rocket.repository.PasswordResetTokenRepository;
 import shop.mit301.rocket.service.UserServiceImpl;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -28,6 +32,7 @@ public class UserController {
     private final PasswordResetTokenRepository tokenRepository;
     private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @PostMapping("/findId")
     public ResponseEntity<Map<String, String>> findIdByEmail(@RequestBody Map<String, String> request) {
@@ -57,19 +62,28 @@ public class UserController {
 
         Map<String, String> response = new HashMap<>();
 
-        // username(아이디) + email이 정확히 일치하는 사용자만 조회
-        Optional<User> optionalUser = userRepository.findByUseridAndEmail(id, email);
+        // 1. 아이디 존재 여부 확인
+        Optional<User> optionalUserById = userRepository.findByUserid(id);
 
-        if (optionalUser.isEmpty()) {
-            response.put("message", "일치하는 사용자 정보가 없습니다.");
+        if (optionalUserById.isEmpty()) {
+            response.put("status", "fail");
+            response.put("message", "아이디가 존재하지 않습니다.");
             return ResponseEntity.status(404).body(response);
         }
 
-        User user = optionalUser.get();
+        User user = optionalUserById.get();
 
-        // 이메일 전송 서비스 호출
+        // 2. 이메일 일치 여부 확인
+        if (!user.getEmail().equals(email)) {
+            response.put("status", "fail");
+            response.put("message", "이메일이 일치하지 않습니다.");
+            return ResponseEntity.status(400).body(response);
+        }
+
+        // 3. 이메일 전송 서비스 호출
         userService.sendPasswordResetLink(user.getEmail());
 
+        response.put("status", "success");
         response.put("message", "이메일로 비밀번호 변경 링크가 전송되었습니다.");
         return ResponseEntity.ok(response);
     }
@@ -134,7 +148,6 @@ public class UserController {
 
         User user = optionalUser.get();
 
-        // 평문 비밀번호 비교
         if (!user.getPw().equals(password)) {
             response.put("status", "fail");
             response.put("message", "아이디 또는 비밀번호가 일치하지 않습니다.");
@@ -145,6 +158,40 @@ public class UserController {
 
         response.put("status", "success");
         response.put("token", token);
+        response.put("permission", String.valueOf(user.getPermission()));
+
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/user/graph-layout")
+    public ResponseEntity<?> getGraphLayout(@RequestHeader("Authorization") String token) {
+        String userId = jwtTokenProvider.getUserIdFromToken(token);
+        return userRepository.findByUserid(userId)
+                .map(layout -> ResponseEntity.ok(Map.of(
+                        "activeGraphs", new Gson().fromJson(layout.getGraphData(), List.class)
+                )))
+                .orElse(ResponseEntity.ok(Map.of("activeGraphs", List.of())));
+    }
+
+    @PostMapping("/user/graph-layout")
+    public ResponseEntity<?> saveGraphLayout(@RequestHeader("Authorization") String token,
+                                             @RequestBody Map<String, Object> body) {
+        String userId = jwtTokenProvider.getUserIdFromToken(token);  // Long 대신 String
+
+        List<?> activeGraphs = (List<?>) body.get("activeGraphs");
+        String json = new Gson().toJson(activeGraphs);
+
+        User layout = userRepository.findByUserid(userId)
+                .map(existing -> existing.toBuilder()
+                        .graphData(json)
+                        .build())
+                .orElse(User.builder()
+                        .userid(userId)
+                        .graphData(json)
+                        .build());
+
+        userRepository.save(layout);
+
+        return ResponseEntity.ok().build();
     }
 }
