@@ -6,20 +6,16 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Admin_DeviceDetailDTO {
-
+public class Admin_DeviceDetailRespDTO {
     private String deviceSerialNumber;
     private String name;
-
-    // 💡 [수정] ip/port 제거, edgeSerial 추가
     private String edgeSerial;
-
-    // 💡 [수정] portPath 추가
-    private String portPath;
-
-    private List<Admin_DeviceDataRegisterRespDTO> deviceDataList;
+    private String edgeIp;
+    private int edgePort;
+    private List<Admin_DeviceDataDetailRespDTO> deviceDataList;
 }

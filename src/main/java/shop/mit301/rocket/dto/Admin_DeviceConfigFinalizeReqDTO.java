@@ -5,17 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Admin_DeviceListDTO {
+public class Admin_DeviceConfigFinalizeReqDTO {
     private String deviceName;
-    private String deviceSerialNumber;
-    private LocalDateTime createdDate;
-    private String edgeSerial;
-    private List<String> dataNames;
+    private String deviceSerial;
+    private List<Admin_DeviceDataConfigReqDTO> dataStreams;
 }

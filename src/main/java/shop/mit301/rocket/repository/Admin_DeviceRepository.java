@@ -3,11 +3,17 @@ package shop.mit301.rocket.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import shop.mit301.rocket.domain.Device;
 
+import java.util.Optional;
+
 public interface Admin_DeviceRepository extends JpaRepository<Device, String> {
-    // 시리얼넘버 중복 여부 확인 (기존 필드를 사용하므로 유지)
+
+    // 1. 장비 시리얼 중복 확인 (IDeivceRegistrationService에서 사용)
     boolean existsByDeviceSerialNumber(String deviceSerialNumber);
 
-    // [추가] 엣지 게이트웨이 시리얼과 포트 경로 중복 확인 (장비 재등록 방지)
-    // Device 엔티티에 새로 추가된 필드를 사용합니다.
-    boolean existsByEdgeGateway_EdgeSerialAndPortPath(String edgeSerial, String portPath);
+    // 2. 장비 시리얼로 Device 엔티티 조회 (IAdminDeviceService에서 필수)
+    Optional<Device> findByDeviceSerialNumber(String deviceSerialNumber);
+
+    // 3.  Edge Gateway의 IP와 Port를 통한 중복 등록 확인
+    // EdgeGateway 엔티티 내의 ipAddress와 port 필드를 참조하여 쿼리를 생성합니다.
+    boolean existsByEdgeGateway_IpAddressAndEdgeGateway_Port(String ipAddress, int port);
 }

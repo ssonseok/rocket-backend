@@ -1,343 +1,215 @@
 package shop.mit301.rocket.service;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.Device;
 import shop.mit301.rocket.domain.DeviceData;
 import shop.mit301.rocket.domain.EdgeGateway;
+import shop.mit301.rocket.domain.Unit;
 import shop.mit301.rocket.dto.*;
-import shop.mit301.rocket.repository.Admin_DeviceDataRepository;
-import shop.mit301.rocket.repository.Admin_DeviceRepository;
-import shop.mit301.rocket.repository.Admin_EdgeGatewayRepository;
-import shop.mit301.rocket.repository.Admin_UnitRepository;
+import shop.mit301.rocket.repository.*;
 import shop.mit301.rocket.websocket.ConnectionRegistry;
+import shop.mit301.rocket.websocket.EdgeWebSocketHandler;
+
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class Admin_DeviceServiceImpl implements Admin_DeviceService {
+    // DB Repositories
+    private final Admin_DeviceRepository deviceRepository;
+    private final Admin_DeviceDataRepository deviceDataRepository;
+    private final Admin_UnitRepository unitRepository;
+    private final Admin_EdgeGatewayRepository edgeGatewayRepository; // Edge 정보 직접 수정/조회용
+    private final Admin_MeasurementDataRepository measurementDataRepository;
 
-    private final Admin_DeviceRepository adminDeviceRepository;
-    private final Admin_EdgeGatewayRepository adminEdgeGatewayRepository; // 💡 [추가] Edge Gateway Repository
-    // private final Admin_UnitRepository adminUnitRepository; // 사용하지 않아 주석 처리
-    private final Admin_DeviceDataRepository adminDeviceDataRepository;
-    private final ModelMapper modelMapper;
-    private final ConnectionRegistry connectionRegistry;
+    // Services & Handlers
+    private final EdgeGatewayService edgeGatewayService;
+    private final EdgeWebSocketHandler edgeWebSocketHandler;
 
-    // 필드 추가: 가장 최근 테스트 결과를 임시 저장할 인메모리 캐시
-    private final Map<String, Admin_DeviceStatusTestDTO> testResultCache = new ConcurrentHashMap<>();
-
-    // Helper: 응답 데이터의 이상 유무를 판단
-    private String analyzeResponseData(String responseData) {
-        try {
-            // Gson 대신 JsonParser 사용
-            JsonObject json = JsonParser.parseString(responseData).getAsJsonObject();
-            String status = json.get("status").getAsString();
-
-            if ("success".equalsIgnoreCase(status) || "succeed".equalsIgnoreCase(status)) {
-                return "OK";
-            }
-        } catch (Exception e) {
-            // JSON 파싱 실패 등
-        }
-        return "ERROR_DATA";
-    }
 
     @Override
     public boolean checkDuplicateSerialNumber(String deviceSerialNumber) {
-        return adminDeviceRepository.existsByDeviceSerialNumber(deviceSerialNumber);
+        return deviceRepository.existsByDeviceSerialNumber(deviceSerialNumber);
     }
 
-    // 💡 [추가] Edge Gateway 내 포트 경로 중복 확인 (장비 재등록 방지)
-    public boolean checkDuplicatePortPath(String edgeSerial, String portPath) {
-        return adminDeviceRepository.existsByEdgeGateway_EdgeSerialAndPortPath(edgeSerial, portPath);
-    }
-
+    /**
+     * 장비의 모든 정보(장치명, Edge IP/Port, 데이터 메타정보)를 단일 메서드로 수정합니다.
+     */
     @Override
     @Transactional
-    public Admin_DeviceRegisterRespDTO registerDevice(Admin_DeviceRegisterReqDTO request) {
-        // 1. 시리얼 넘버 중복 체크
-        if (checkDuplicateSerialNumber(request.getDeviceSerialNumber())) {
-            // DTO에 ip/port 필드가 없으므로, 제거 후 빌드
-            return Admin_DeviceRegisterRespDTO.builder()
-                    .deviceSerialNumber(request.getDeviceSerialNumber())
-                    .name(request.getName())
-                    .testSuccess(false)
-                    .dataCount(0)
+    public String updateFullDeviceInfo(Admin_DeviceModifyReqDTO request) {
+        String serial = request.getDeviceSerialNumber();
+
+        // 1. Device 엔티티 조회 (수정 대상)
+        Device device = deviceRepository.findByDeviceSerialNumber(serial)
+                .orElseThrow(() -> new RuntimeException("수정하려는 장비 [" + serial + "]를 찾을 수 없습니다."));
+
+        // 2. EdgeGateway 엔티티 수정 (IP, Port 변경)
+        EdgeGateway edgeGateway = device.getEdgeGateway();
+
+        // EdgeGateway 엔티티는 EdgeGatewayService에 의해 관리되지만, 여기서는 직접 수정한다고 가정합니다.
+        if (request.getNewIpAddress() != null && request.getNewPort() != null) {
+            // 기존 EdgeGateway를 기반으로 새로운 EdgeGateway 객체를 생성
+            EdgeGateway updatedEdgeGateway = edgeGateway.toBuilder()
+                    .ipAddress(request.getNewIpAddress())
+                    .port(request.getNewPort())
+                    // 필요한 경우 modify_date 등 갱신 필드 추가
                     .build();
+
+            edgeGateway = edgeGatewayRepository.save(updatedEdgeGateway); // PK가 같으므로 UPDATE
         }
 
-        // 2. 💡 [필수] Edge Gateway 존재 여부 확인 및 엔티티 조회
-        EdgeGateway edgeGateway = adminEdgeGatewayRepository.findById(request.getEdgeSerial())
-                .orElseThrow(() -> new RuntimeException("Edge Gateway를 찾을 수 없습니다: " + request.getEdgeSerial()));
+        // 3. Device 엔티티 수정 (장치명 변경)
+        if (request.getNewName() != null) {
+            // 기존 Device를 기반으로 새로운 Device 객체를 생성
+            Device updatedDevice = device.toBuilder()
+                    .name(request.getNewName()) // 변경된 장치명
+                    .edgeGateway(edgeGateway)   // 2번에서 업데이트된 EdgeGateway 연결
+                    .modify_date(LocalDateTime.now()) // 수정 시간 갱신
+                    .build();
 
-        // 3. 💡 [추가] 같은 Edge 내 포트 경로 중복 체크
-        if (checkDuplicatePortPath(request.getEdgeSerial(), request.getPortPath())) {
-            throw new RuntimeException("해당 Edge Gateway에 이미 같은 포트 경로를 사용하는 장비가 등록되어 있습니다.");
+            // 새로운 객체를 저장 (PK가 같으므로 UPDATE)
+            device = deviceRepository.save(updatedDevice);
+            // 이후의 DeviceData 수정에 updatedDevice 객체를 사용해야 함
         }
 
+        // 4. DeviceData 목록 수정
+        for (Admin_DeviceDataModifyReqDTO dataReq : request.getDataStreams()) {
+            // 4-1. DeviceData 엔티티 조회 (Primary Key: deviceDataId)
+            DeviceData deviceData = deviceDataRepository.findById(dataReq.getDeviceDataId())
+                    .orElseThrow(() -> new RuntimeException("DeviceData ID [" + dataReq.getDeviceDataId() + "]를 찾을 수 없습니다."));
 
-        // 4. 장치 등록 (ip/port 제거, edgeGateway/portPath 추가)
-        Device device = Device.builder()
-                .deviceSerialNumber(request.getDeviceSerialNumber())
-                .name(request.getName())
-                .edgeGateway(edgeGateway) // 💡 [수정] EdgeGateway 엔티티 연결
-                .portPath(request.getPortPath()) // 💡 [수정] Port Path 저장
-                .regist_date(LocalDateTime.now())
-                .build();
-        adminDeviceRepository.save(device);
+            // 4-2. Unit 엔티티 조회
+            Unit unit = unitRepository.findByUnit(dataReq.getUnitName())
+                    .orElseThrow(() -> new RuntimeException("단위(Unit) [" + dataReq.getUnitName() + "]를 찾을 수 없습니다."));
 
-        // 등록 시점에는 DeviceData가 없으므로 0으로 설정
-        int sensorCount = adminDeviceDataRepository.findByDevice_DeviceSerialNumber(device.getDeviceSerialNumber()).size();
+            // 4-3. 필드 업데이트 (빌더 사용)
+            DeviceData updatedDeviceData = deviceData.toBuilder()
+                    .name(dataReq.getName())
+                    .unit(unit)
+                    .min(dataReq.getMinValue())
+                    .max(dataReq.getMaxValue())
+                    .reference_value(dataReq.getStandardValue())
+                    // 필요한 경우 modify_date 등 갱신 필드 추가
+                    .build();
 
-        // 5. 응답 DTO 필드 수정 (ip/port 제거)
-        return Admin_DeviceRegisterRespDTO.builder()
-                .deviceSerialNumber(device.getDeviceSerialNumber())
-                .name(device.getName())
-                .testSuccess(true)
-                .dataCount(sensorCount)
-                .build();
+            deviceDataRepository.save(updatedDeviceData); // PK가 같으므로 UPDATE
+        }
+
+        return serial + " 장비 정보가 성공적으로 수정되었습니다.";
     }
 
-    @Override
-    public Device getDevice(String serialNumber) {
-        return adminDeviceRepository.findById(serialNumber)
-                .orElseThrow(() -> new RuntimeException("Device 없음: " + serialNumber));
-    }
-
-    @Override
-    public List<Admin_DeviceListDTO> getDeviceList() {
-        List<Device> devices = adminDeviceRepository.findAll();
-
-        return devices.stream().map(device -> {
-            Admin_DeviceListDTO dto = new Admin_DeviceListDTO();
-            dto.setDeviceSerialNumber(device.getDeviceSerialNumber());
-            dto.setDeviceName(device.getName());
-            dto.setCreatedDate(device.getRegist_date());
-
-            // 💡 [추가] Edge Serial 및 Port Path 표시
-            dto.setEdgeSerial(device.getEdgeGateway().getEdgeSerial());
-            dto.setPortPath(device.getPortPath());
-
-            // DeviceData에서 name만 추출
-            List<String> dataNames = device.getDevice_data_list().stream()
-                    .map(DeviceData::getName)
-                    .collect(Collectors.toList());
-            dto.setDataNames(dataNames);
-
-            return dto;
-        }).collect(Collectors.toList());
-    }
-
+    //장비삭제
     @Override
     @Transactional
     public String deleteDevice(Admin_DeviceDeleteDTO dto) {
-        // 로직 유지 (DB 관계 설정이 올바르다면 Cascade로 하위 데이터까지 삭제)
-        Device device = adminDeviceRepository.findById(dto.getDeviceSerialNumber())
-                .orElseThrow(() -> new RuntimeException("Device not found"));
+        String serial = dto.getDeviceSerialNumber();
 
-        // DeviceData와 MeasurementData 리스트를 강제로 fetch
-        device.getDevice_data_list().forEach(dd -> {
-            dd.getMeasurement_data_list().size(); // Lazy 강제 초기화
-            dd.getUser_device_data_list().size();
-        });
+        Device device = deviceRepository.findByDeviceSerialNumber(serial)
+                .orElseThrow(() -> new RuntimeException("삭제하려는 장비 [" + serial + "]를 찾을 수 없습니다."));
 
-        adminDeviceRepository.delete(device);
-        return "success";
-    }
+        // 1. DeviceData 조회
+        List<DeviceData> deviceDataList = deviceDataRepository.findByDevice_DeviceSerialNumber(serial);
 
-    @Override
-    @Transactional
-    public String modifyDevice(Admin_DeviceModifyReqDTO dto) {
-        Device existing = adminDeviceRepository.findById(dto.getDeviceSerialNumber()).get();
-
-        EdgeGateway edgeGateway = adminEdgeGatewayRepository.findById(dto.getEdgeSerial())
-                .orElseThrow(() -> new RuntimeException("Edge Gateway를 찾을 수 없습니다: " + dto.getEdgeSerial()));
-
-        Device updated = Device.builder()
-                .deviceSerialNumber(existing.getDeviceSerialNumber())
-                .name(dto.getName())
-                .edgeGateway(edgeGateway)  // 💡 [수정] EdgeGateway 엔티티 연결
-                .portPath(dto.getPortPath()) // 💡 [수정] Port Path 저장
-                .regist_date(existing.getRegist_date())
-                .build();
-
-        adminDeviceRepository.save(updated);
-
-        return "success";
-    }
-
-
-    //----1021--- 시작
-    @Override
-    public Admin_DeviceStatusRespDTO getDeviceStatus(String serialNumber) {
-        // 로직 유지 (Device Name, SerialNumber 기반이므로 변경 없음)
-        Device device = adminDeviceRepository.findById(serialNumber)
-                .orElseThrow(() -> new RuntimeException("Device not found: " + serialNumber));
-
-        return Admin_DeviceStatusRespDTO.builder()
-                .deviceName(device.getName())
-                .serialNumber(device.getDeviceSerialNumber())
-                .build();
-    }
-
-    @Override
-    public String testDeviceConnection(String serialNumber) {
-        long startTime = System.currentTimeMillis();
-        String testStatus = "실패";
-        String dataStatus = "N/A";
-        String responseData = "연결/테스트 실패";
-        Device device = null;
-        String edgeSerial = null;
-        String portPath = null; // 💡 [추가] portPath 변수 선언
-
-        try {
-            // 1. 장치 정보 조회 (EdgeSerial과 PortPath를 얻기 위함)
-            device = adminDeviceRepository.findById(serialNumber)
-                    .orElseThrow(() -> new RuntimeException("Device not found: " + serialNumber));
-
-            // 2. 💡 [추출] EdgeSerial과 PortPath 추출
-            edgeSerial = device.getEdgeGateway().getEdgeSerial();
-            portPath = device.getPortPath(); // 💡 [추가] portPath 추출
-
-            // 3. ConnectionRegistry를 통해 엣지에 실제 테스트 요청 및 응답 수신
-            // (이제 ConnectionRegistry는 edgeSerial, deviceSerial, portPath 3개를 받습니다.)
-            responseData = connectionRegistry.requestTestAndGetResponse(
-                    edgeSerial,
-                    serialNumber,
-                    portPath // 💡 [수정] portPath 전달
-            );
-
-            // 4. 통신 성공 및 응답 데이터 분석
-            testStatus = "성공";
-            dataStatus = analyzeResponseData(responseData);
-
-        } catch (Exception e) {
-            testStatus = "실패";
-            responseData = "테스트 오류: " + e.getMessage();
+        // 2. MeasurementData 삭제
+        for (DeviceData data : deviceDataList) {
+            measurementDataRepository.deleteByDevicedata(data);
         }
 
-        long endTime = System.currentTimeMillis();
+        // 3. DeviceData 삭제
+        deviceDataRepository.deleteAll(deviceDataList);
 
-        // DTO 생성 (캐시 저장)
-        Admin_DeviceStatusTestDTO resultDTO = Admin_DeviceStatusTestDTO.builder()
-                .deviceSerialNumber(serialNumber)
-                .name(device != null ? device.getName() : "Unknown Device")
-                .status(testStatus)
-                .dataStatus(dataStatus)
-                .responseData(responseData)
-                .responseTimeMs(endTime - startTime)
-                .edgeSerial(edgeSerial)
-                .portPath(portPath) // 💡 [수정] 추출한 portPath 사용
-                .build();
+        // 4. Device 삭제
+        deviceRepository.delete(device);
 
-        // 5. 상세 결과를 캐시에 저장합니다.
-        testResultCache.put(serialNumber, resultDTO);
-
-        return testStatus.equals("성공") ? "success" : "fail";
+        return serial + " 장비와 모든 관련 데이터가 삭제되었습니다.";
     }
 
     @Override
-    public Admin_DeviceStatusTestDTO getLatestTestResult(String serialNumber) {
-        // 로직 유지
-        Admin_DeviceStatusTestDTO result = testResultCache.get(serialNumber);
-        if (result == null) {
-            throw new RuntimeException("최근 테스트 결과가 존재하지 않습니다. 먼저 테스트를 실행하세요.");
-        }
-        return result;
+    @Transactional(readOnly = true)
+    public List<Admin_DeviceListDTO> getDeviceList() {
+        List<Device> devices = deviceRepository.findAll();
+
+        return devices.stream()
+                .map(device -> {
+                    // 데이터 종류 (DeviceData List에서 Name만 추출)
+                    List<String> dataNames = device.getDevice_data_list().stream()
+                            .map(DeviceData::getName)
+                            .collect(Collectors.toList());
+
+                    return Admin_DeviceListDTO.builder()
+                            .deviceName(device.getName())
+                            .deviceSerialNumber(device.getDeviceSerialNumber())
+                            .createdDate(device.getRegist_date())
+                            .edgeSerial(device.getEdgeGateway().getEdgeSerial())
+                            .dataNames(dataNames)
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
-//----1021--- 끝
 
     @Override
-    public Admin_DeviceDetailDTO getDeviceDetail(String deviceSerialNumber) {
+    @Transactional(readOnly = true)
+    public Admin_DeviceDetailRespDTO getDeviceDetail(String deviceSerialNumber) {
+        Device device = deviceRepository.findByDeviceSerialNumber(deviceSerialNumber)
+                .orElseThrow(() -> new RuntimeException("장비 [" + deviceSerialNumber + "]를 찾을 수 없습니다."));
 
-        // 1. 장치 조회
-        Device device = adminDeviceRepository.findById(deviceSerialNumber)
-                .orElseThrow(() -> new RuntimeException("해당 장치가 존재하지 않습니다."));
+        EdgeGateway edgeGateway = device.getEdgeGateway();
 
-        // 2. 장치에 연결된 센서 데이터 조회
-        List<DeviceData> dataList = adminDeviceDataRepository.findByDevice_DeviceSerialNumber(deviceSerialNumber);
-
-        // 3. 센서 DTO 변환 (유지)
-        List<Admin_DeviceDataRegisterRespDTO> sensors = dataList.stream()
-                .map(data -> Admin_DeviceDataRegisterRespDTO.builder()
+        // DeviceData 리스트를 DTO 리스트로 변환
+        List<Admin_DeviceDataDetailRespDTO> dataList = device.getDevice_data_list().stream()
+                .map(data -> Admin_DeviceDataDetailRespDTO.builder()
+                        .deviceDataId(data.getDevicedataid()) // int 타입 필드명 사용
                         .name(data.getName())
+                        .unitName(data.getUnit().getUnit()) // Unit 엔티티의 unit 필드 사용 가정
                         .min(data.getMin())
                         .max(data.getMax())
                         .referenceValue(data.getReference_value())
-                        .unitId(data.getUnit().getUnitid())
-                        .saved(true)
-                        .build()
-                ).collect(Collectors.toList());
+                        .build())
+                .collect(Collectors.toList());
 
-        // 4. 장치 DTO 변환 (ip/port 제거)
-        return Admin_DeviceDetailDTO.builder()
+        return Admin_DeviceDetailRespDTO.builder()
                 .deviceSerialNumber(device.getDeviceSerialNumber())
                 .name(device.getName())
-                .edgeSerial(device.getEdgeGateway().getEdgeSerial()) // 💡 [수정]
-                .portPath(device.getPortPath()) // 💡 [수정]
-                .deviceDataList(sensors)
+                .edgeSerial(edgeGateway.getEdgeSerial())
+                .edgeIp(edgeGateway.getIpAddress())
+                .edgePort(edgeGateway.getPort())
+                .deviceDataList(dataList)
                 .build();
     }
 
-    // 💡 [제거] testDeviceConnection(String ip, int port) 메서드는 제거되어야 합니다.
-    // @Override
-    // public String testDeviceConnection(String ip, int port) { return null; }
     @Override
-    @Transactional
-    public EdgeGateway registerEdge(EdgeRegisterReqDTO request) {
-        // 1. 중복 체크 (Edge Serial은 PK이므로, findById로 존재 여부 확인 가능)
-        if (adminEdgeGatewayRepository.existsById(request.getEdgeSerial())) {
-            throw new IllegalArgumentException("Edge Gateway 시리얼 넘버가 이미 존재합니다: " + request.getEdgeSerial());
-        }
+    @Transactional(readOnly = true)
+    public Admin_DeviceStatusRespDTO getDeviceStatus(String serialNumber) {
+        // 1. Device 엔티티 조회
+        Device device = deviceRepository.findByDeviceSerialNumber(serialNumber)
+                .orElseThrow(() -> new RuntimeException("장비 [" + serialNumber + "]를 찾을 수 없습니다."));
 
-        // 2. EdgeGateway 엔티티 생성
-        EdgeGateway edgeGateway = EdgeGateway.builder()
-                .edgeSerial(request.getEdgeSerial())
-                .ipAddress(request.getIpAddress())
-                // 요청 DTO에 status가 없다면 기본값 "DISCONNECTED" 사용
-                .status(request.getStatus() != null ? request.getStatus() : "DISCONNECTED")
+        // 2. Edge의 WebSocket 연결 상태 확인
+        String edgeSerial = device.getEdgeGateway().getEdgeSerial();
+        boolean isWsConnected = edgeWebSocketHandler.isConnected(edgeSerial);
+
+        // 3. Edge Gateway의 DB 상태 정보
+        String dbStatus = device.getEdgeGateway().getStatus();
+
+        // TODO: lastDataReceived 및 responseTimeMs는 MeasurementData 테이블에서 조회하는 로직이 필요함.
+        // 현재는 더미 데이터 반환 또는 단순하게 처리
+
+        return Admin_DeviceStatusRespDTO.builder()
+                .deviceSerialNumber(serialNumber)
+                .deviceName(device.getName())
+                .edgeSerial(edgeSerial)
+                .wsConnected(isWsConnected)
+                .dbStatus(dbStatus)
+                // 임시 값 또는 DB에서 조회하도록 로직 추가 필요
+                .lastDataReceived(LocalDateTime.now())
+                .responseTimeMs(0L)
                 .build();
-
-        // 3. 저장 및 반환
-        return adminEdgeGatewayRepository.save(edgeGateway);
-    }
-
-    @Override
-    public EdgeGateway getEdge(String edgeSerial) {
-        // 엣지 게이트웨이 조회
-        return adminEdgeGatewayRepository.findById(edgeSerial)
-                .orElseThrow(() -> new RuntimeException("Edge Gateway를 찾을 수 없습니다: " + edgeSerial));
-    }
-
-    @Override
-    public List<EdgeListDTO> getEdgeList() {
-        // 1. 모든 Edge Gateway 엔티티 조회
-        List<EdgeGateway> edgeList = adminEdgeGatewayRepository.findAll();
-
-        // 2. DTO로 변환
-        return edgeList.stream().map(edge -> {
-
-            // 💡 Edge Gateway에 연결된 장비 수 계산
-            int deviceCount = edge.getDeviceList().size();
-
-            return EdgeListDTO.builder()
-                    .edgeSerial(edge.getEdgeSerial())
-                    .ipAddress(edge.getIpAddress())
-                    .status(edge.getStatus())
-                    .deviceCount(deviceCount) // 연결된 장비 수 포함
-                    .build();
-        }).collect(Collectors.toList());
     }
 }

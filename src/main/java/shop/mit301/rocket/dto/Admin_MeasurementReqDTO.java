@@ -11,10 +11,10 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Admin_DeviceModifyReqDTO {
+public class Admin_MeasurementReqDTO {
+    // 장비 시리얼 번호
     private String deviceSerialNumber;
-    private String newName;
-    private String newIpAddress;
-    private Integer newPort;
-    private List<Admin_DeviceDataModifyReqDTO> dataStreams;
+
+    // 엣지에서 전송된 센서 측정값 리스트 (Double 타입이 실수형 데이터 처리에 적합)
+    private List<Double> values;
 }
