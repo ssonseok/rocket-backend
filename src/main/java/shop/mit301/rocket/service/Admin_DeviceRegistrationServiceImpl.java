@@ -104,7 +104,7 @@ public class Admin_DeviceRegistrationServiceImpl implements Admin_DeviceRegistra
             // 3-2. DeviceData 엔티티 생성
             DeviceData deviceData = DeviceData.builder()
                     .device(savedDevice) // 방금 저장한 Device 엔티티 연결
-                    .dataIndex(dataReq.getStreamIndex()-1)
+                    .dataIndex(dataReq.getStreamIndex())
                     .name(dataReq.getName())
                     .unit(unit)
                     .min(dataReq.getMinValue())
