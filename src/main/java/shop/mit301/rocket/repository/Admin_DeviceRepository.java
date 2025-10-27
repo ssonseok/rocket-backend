@@ -1,6 +1,10 @@
 package shop.mit301.rocket.repository;
 
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import shop.mit301.rocket.domain.Device;
 
 import java.util.Optional;
@@ -16,4 +20,9 @@ public interface Admin_DeviceRepository extends JpaRepository<Device, String> {
     // 3.  Edge Gateway의 IP와 Port를 통한 중복 등록 확인
     // EdgeGateway 엔티티 내의 ipAddress와 port 필드를 참조하여 쿼리를 생성합니다.
     boolean existsByEdgeGateway_IpAddressAndEdgeGateway_Port(String ipAddress, int port);
+
+    @Modifying
+    @Transactional
+    @Query("delete from Device d where d.deviceSerialNumber = :serialNumber")
+    void deleteDirect(@Param("serialNumber") String serialNumber);
 }

@@ -108,31 +108,23 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
         return serial + " 장비 정보가 성공적으로 수정되었습니다.";
     }
 
-    //장비삭제
     @Override
     @Transactional
     public String deleteDevice(Admin_DeviceDeleteDTO dto) {
         String serial = dto.getDeviceSerialNumber();
 
-        Device device = deviceRepository.findByDeviceSerialNumber(serial)
-                .orElseThrow(() -> new RuntimeException("삭제하려는 장비 [" + serial + "]를 찾을 수 없습니다."));
+        // 1. MeasurementData 삭제 (자식부터)
+        measurementDataRepository.deleteByDeviceSerialNumber(serial);
 
-        // 1. DeviceData 조회
-        List<DeviceData> deviceDataList = deviceDataRepository.findByDevice_DeviceSerialNumber(serial);
+        // 2. DeviceData 삭제
+        deviceDataRepository.deleteByDeviceSerialNumber(serial);
 
-        // 2. MeasurementData 삭제
-        for (DeviceData data : deviceDataList) {
-            measurementDataRepository.deleteByDevicedata(data);
-        }
-
-        // 3. DeviceData 삭제
-        deviceDataRepository.deleteAll(deviceDataList);
-
-        // 4. Device 삭제
-        deviceRepository.delete(device);
+        // 3. Device 삭제
+        deviceRepository.deleteDirect(serial);
 
         return serial + " 장비와 모든 관련 데이터가 삭제되었습니다.";
     }
+
 
     @Override
     @Transactional(readOnly = true)
