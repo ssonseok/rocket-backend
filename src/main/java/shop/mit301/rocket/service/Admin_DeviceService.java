@@ -32,6 +32,6 @@ public interface Admin_DeviceService {
     Admin_DeviceDetailRespDTO getDeviceDetail(String deviceSerialNumber);
 
     /** 장비 상태 보기 (응답 데이터 이상 유무, 응답 데이터, 응답 속도 조회) */
-    Admin_DeviceStatusRespDTO getDeviceStatus(String serialNumber);
+    Admin_DeviceStatusTestDTO getDeviceStatus(String serialNumber);
     // Admin_DeviceStatusRespDTO는 아직 정의하지 않았지만, 상태 정보를 담을 응답 DTO가 필요함
 }

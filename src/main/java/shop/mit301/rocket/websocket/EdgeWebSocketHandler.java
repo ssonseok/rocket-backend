@@ -1,8 +1,6 @@
 package shop.mit301.rocket.websocket;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +18,9 @@ import shop.mit301.rocket.service.EdgeGatewayService;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -94,6 +95,57 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
         edgeGatewayService.updateStatus(edgeSerial, "CONNECTED");
         System.out.println("엣지 연결됨: " + edgeSerial);
     }
+    // --------------------------------------------------------------------------------
+// 3. 장비 상태 보기 기능 (추가)
+// --------------------------------------------------------------------------------
+
+    /**
+     * ServiceImpl에서 호출되어 Edge 장비에 상태 체크 요청을 보내고 동기적으로 응답을 기다립니다.
+     * @param edgeSerial 상태를 확인할 Edge 시리얼 번호
+     * @return 응답 페이로드 (JSON String) + 응답속도 정보
+     */
+    public String checkEdgeStatus(String edgeSerial) throws Exception {
+        long startTime = System.currentTimeMillis(); // ⏱️ 응답 속도 측정 시작
+
+        // 1. Edge 세션 확인
+        WebSocketSession session = connectionRegistry.getSession(edgeSerial);
+        if (session == null || !session.isOpen()) {
+            throw new IllegalStateException("Edge Gateway와의 WebSocket 연결이 활성화되지 않았습니다: " + edgeSerial);
+        }
+
+        // 2. 요청 ID 생성 및 메시지 준비 (STATUS_CHECK_REQUEST)
+        String commandId = java.util.UUID.randomUUID().toString();
+        JsonObject requestJson = new JsonObject();
+        requestJson.addProperty("type", "STATUS_CHECK_REQUEST");
+        requestJson.addProperty("commandId", commandId);
+
+        // 3. 응답 대기 시작
+        CompletableFuture<String> future = connectionRegistry.awaitResponse(commandId);
+
+        // 4. 메시지 전송 및 동기적 대기 (5초 타임아웃 설정)
+        session.sendMessage(new TextMessage(requestJson.toString()));
+
+        String responsePayload;
+        try {
+            responsePayload = future.get(5, TimeUnit.SECONDS); // 5초 대기
+        } catch (TimeoutException e) {
+            connectionRegistry.removeResponse(commandId); // 타임아웃 시 대기 중인 future 제거
+            throw new TimeoutException("Edge Gateway 응답 시간 초과 (5초).");
+        }
+
+        // 5. 응답 수신 시간 및 응답속도 계산
+        long endTime = System.currentTimeMillis();
+        long responseTimeMs = endTime - startTime; // 👈 응답 속도
+
+        // 6. 응답 JSON에 응답 속도 정보 및 성공 유무 추가
+        JsonObject responseJson = JsonParser.parseString(responsePayload).getAsJsonObject();
+
+        JsonObject finalResult = new JsonObject();
+        finalResult.addProperty("responseTimeMs", responseTimeMs);
+        finalResult.add("dataPayload", responseJson); // 엣지에서 온 원본 데이터를 dataPayload 필드에 포함
+
+        return finalResult.toString();
+    }
 
     /**
      * Edge로부터 메시지 수신 시 호출: 동기 응답 처리 또는 실시간 데이터 처리
@@ -112,19 +164,33 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
                 }
                 break;
 
-            case "DATA_STREAM":
-                if (json.has("serialNumber") && json.has("data")) {
-                    String serial = json.get("serialNumber").getAsString();
-                    double[] valuesArray = gson.fromJson(json.get("data"), double[].class);
-                    List<Double> doubleValues = Arrays.stream(valuesArray).boxed().toList();
+            case "STATUS_CHECK_RESPONSE":
+                if (json.has("commandId")) {
+                    String commandId = json.get("commandId").getAsString();
+                    connectionRegistry.completeResponse(commandId, message.getPayload());
+                    System.out.println("상태 체크 응답 수신: CommandID=" + commandId);
+                }
+                break;
 
+            case "DATA_STREAM":
+                // 💡 수정 완료: 실시간 측정 데이터 처리 및 저장 로직
+                if (json.has("serialNumber") && json.has("data")) {
+                    String deviceSerial = json.get("serialNumber").getAsString();
+                    JsonArray dataArray = json.getAsJsonArray("data");
+
+                    // 1. JsonArray를 List<Double>로 변환
+                    List<Double> dataValues = convertJsonArrayToList(dataArray);
+
+                    // 2. measurementService 호출 (서비스 메서드 이름: saveMeasurement)
                     try {
-                        // ✅ 핵심: Device 등록 + DeviceData 존재 확인 후 바로 저장
-                        measurementService.saveMeasurement(serial, doubleValues);
-                        System.out.println("MeasurementData 저장 완료: 시리얼=" + serial);
+                        measurementService.saveMeasurement(deviceSerial, dataValues);
                     } catch (Exception e) {
-                        System.err.println("측정값 저장 실패: " + e.getMessage());
+                        System.err.println("🚨 측정 데이터 저장 중 오류 발생: " + e.getMessage());
+                        // 중요한 데이터이므로 예외가 발생하면 반드시 로그를 남깁니다.
                     }
+
+                } else {
+                    System.err.println("🚨 DATA_STREAM에 필수 필드 누락: " + json);
                 }
                 break;
 
@@ -148,5 +214,11 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
         WebSocketSession session = connectionRegistry.getSession(edgeSerial);
         // ConnectionRegistry는 세션이 유효할 때만 반환하므로, null 체크와 isOpen()만 확인하면 됨
         return session != null && session.isOpen();
+    }
+    private List<Double> convertJsonArrayToList(JsonArray jsonArray) {
+        return jsonArray.asList().stream()
+                // 각 JsonElement를 Double 타입으로 변환합니다.
+                .map(JsonElement::getAsDouble)
+                .collect(Collectors.toList());
     }
 }

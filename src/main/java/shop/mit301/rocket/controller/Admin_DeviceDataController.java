@@ -68,4 +68,3 @@ public class Admin_DeviceDataController {
         }
     }
 }
-

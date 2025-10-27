@@ -109,4 +109,16 @@ public class ConnectionRegistry {
             System.err.println("[Registry] 존재하지 않는 Command ID에 대한 응답 수신: " + commandId);
         }
     }
+    public void removeResponse(String commandId) {
+        CompletableFuture<String> future = responseFutures.remove(commandId);
+        if (future != null) {
+            // Future가 아직 완료되지 않았다면, 취소 처리하여 대기 중인 스레드를 깨울 수 있지만
+            // 이미 checkEdgeStatus에서 TimeoutException으로 깨워졌으므로 제거만 합니다.
+            future.cancel(true);
+            System.out.println("[Registry] 타임아웃으로 Command ID 응답 Future 제거됨: " + commandId);
+        } else {
+            System.err.println("[Registry] 제거하려는 Command ID가 이미 존재하지 않음: " + commandId);
+        }
+    }
+
 }

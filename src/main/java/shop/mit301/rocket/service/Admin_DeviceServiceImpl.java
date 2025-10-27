@@ -1,5 +1,7 @@
 package shop.mit301.rocket.service;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -16,6 +18,7 @@ import shop.mit301.rocket.websocket.EdgeWebSocketHandler;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Service
@@ -185,31 +188,79 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Admin_DeviceStatusRespDTO getDeviceStatus(String serialNumber) {
+// 실시간 통신이 주 목적이므로 @Transactional(readOnly=true) 제거
+    public Admin_DeviceStatusTestDTO getDeviceStatus(String serialNumber) {
+
         // 1. Device 엔티티 조회
         Device device = deviceRepository.findByDeviceSerialNumber(serialNumber)
                 .orElseThrow(() -> new RuntimeException("장비 [" + serialNumber + "]를 찾을 수 없습니다."));
 
-        // 2. Edge의 WebSocket 연결 상태 확인
         String edgeSerial = device.getEdgeGateway().getEdgeSerial();
-        boolean isWsConnected = edgeWebSocketHandler.isConnected(edgeSerial);
 
-        // 3. Edge Gateway의 DB 상태 정보
-        String dbStatus = device.getEdgeGateway().getStatus();
+        // 2. 핵심: EdgeWebSocketHandler를 통해 실시간 상태 체크 실행
+        try {
+            String resultJsonString = edgeWebSocketHandler.checkEdgeStatus(edgeSerial);
 
-        // TODO: lastDataReceived 및 responseTimeMs는 MeasurementData 테이블에서 조회하는 로직이 필요함.
-        // 현재는 더미 데이터 반환 또는 단순하게 처리
+            // 3. 반환된 최종 JSON 파싱
+            JsonObject resultJson = JsonParser.parseString(resultJsonString).getAsJsonObject();
+            JsonObject dataPayload = resultJson.getAsJsonObject("dataPayload");
 
-        return Admin_DeviceStatusRespDTO.builder()
-                .deviceSerialNumber(serialNumber)
-                .deviceName(device.getName())
-                .edgeSerial(edgeSerial)
-                .wsConnected(isWsConnected)
-                .dbStatus(dbStatus)
-                // 임시 값 또는 DB에서 조회하도록 로직 추가 필요
-                .lastDataReceived(LocalDateTime.now())
-                .responseTimeMs(0L)
+            // 4. DTO 구성 (성공 케이스)
+
+            // 엣지 응답에 "status" 필드가 있다고 가정하고 데이터 상태 판단
+            String dataStatus = "SUCCESS".equalsIgnoreCase(dataPayload.get("status").getAsString()) ? "OK" : "ERROR_DATA";
+
+            return Admin_DeviceStatusTestDTO.builder()
+                    .deviceSerialNumber(serialNumber)
+                    .name(device.getName())
+                    .edgeSerial(edgeSerial)
+                    // ⚠️ 수정 완료: Integer -> String 변환 적용
+                    .portPath(String.valueOf(device.getEdgeGateway().getPort()))
+                    .status("SUCCESS") // 통신 성공
+                    .responseTimeMs(resultJson.get("responseTimeMs").getAsLong()) // 응답 속도
+                    .dataStatus(dataStatus)
+                    .responseData(dataPayload.toString()) // 엣지에서 온 원본 데이터
+                    .build();
+
+        } catch (IllegalStateException e) {
+            // 5. 예외 처리: 웹소켓 연결 없음
+            return buildFailureDTO(device, "FAIL", "DISCONNECTED", "Edge Gateway와의 WebSocket 연결이 활성화되지 않았습니다.");
+        } catch (TimeoutException e) {
+            // 5. 예외 처리: 타임아웃
+            return buildFailureDTO(device, "FAIL", "TIMEOUT", "엣지 응답 시간 초과 (5초).");
+        } catch (Exception e) {
+            // 5. 예외 처리: 기타 오류
+            return buildFailureDTO(device, "FAIL", "INTERNAL_ERROR", "테스트 중 백엔드 오류: " + e.getMessage());
+        }
+    }
+
+
+// ... (기존 getDeviceStatus 메서드 위치에 새로운 메서드 구현) ...
+
+
+// --------------------------------------------------------------------------------
+// 헬퍼 메서드 추가
+// --------------------------------------------------------------------------------
+
+    /**
+     * 통신 실패 시 공통적으로 DTO를 구성하는 헬퍼 메서드
+     */
+    private Admin_DeviceStatusTestDTO buildFailureDTO(
+            Device device,
+            String status,
+            String dataStatus,
+            String responseData) {
+
+        return Admin_DeviceStatusTestDTO.builder()
+                .deviceSerialNumber(device.getDeviceSerialNumber())
+                .name(device.getName())
+                .edgeSerial(device.getEdgeGateway().getEdgeSerial())
+                // ⚠️ 수정 완료: Integer -> String 변환 적용
+                .portPath(String.valueOf(device.getEdgeGateway().getPort()))
+                .responseTimeMs(0) // 실패 시 0ms
+                .status(status)
+                .dataStatus(dataStatus)
+                .responseData(responseData)
                 .build();
     }
 }
