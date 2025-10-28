@@ -1,6 +1,6 @@
 package shop.mit301.rocket.service;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import shop.mit301.rocket.domain.Device;
@@ -79,5 +79,55 @@ public class Admin_DeviceDataMeasureServiceImpl implements Admin_DeviceDataMeasu
         }
 
         System.out.println("장비 [" + deviceSerial + "]의 측정값 " + measurements.size() + "개가 DB에 배치 저장 완료되었습니다.");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getLatestDataStreamJson(String serialNumber) {
+
+        // 1. 해당 장비의 모든 DeviceData 목록(Data Index 순서를 알기 위해)을 조회합니다.
+        List<DeviceData> deviceDataList = deviceDataRepository.findByDevice_DeviceSerialNumber(serialNumber);
+
+        if (deviceDataList.isEmpty()) {
+            // 장비에 스트림 설정이 없다면 빈 DATA_STREAM JSON 반환
+            return String.format("{\"status\":\"succeed\",\"data\":[],\"type\":\"DATA_STREAM\",\"serialNumber\":\"%s\"}", serialNumber);
+        }
+
+        // 2. 가장 최신 측정 시간(measurementTime)을 찾습니다.
+        LocalDateTime latestTime = measurementDataRepository.findLatestMeasurementTime()
+                .orElse(null);
+
+        if (latestTime == null) {
+            // 저장된 데이터가 없다면 빈 DATA_STREAM JSON 반환
+            return String.format("{\"status\":\"succeed\",\"data\":[],\"type\":\"DATA_STREAM\",\"serialNumber\":\"%s\"}", serialNumber);
+        }
+
+        // 3. 최신 측정 시간에 저장된 모든 MeasurementData를 조회하고, 현재 장비 데이터만 필터링합니다.
+        List<MeasurementData> latestMeasurements = measurementDataRepository.findByMeasurementDate(latestTime);
+
+        // Data Index를 키로, 측정값을 값으로 하는 Map을 생성합니다.
+        Map<Integer, Double> indexedValues = latestMeasurements.stream()
+                // 🚨 중요: 조회된 데이터가 현재 장비 serialNumber에 해당하는지 확인
+                .filter(m -> m.getDevicedata().getDevice().getDeviceSerialNumber().equals(serialNumber))
+                .collect(Collectors.toMap(
+                        m -> m.getDevicedata().getDataIndex(),
+                        MeasurementData::getMeasurementvalue
+                ));
+
+        // 4. DeviceDataList의 Data Index 순서대로 정렬된 값 리스트를 만듭니다.
+        List<Double> sortedValues = new ArrayList<>(deviceDataList.size());
+        for (int i = 0; i < deviceDataList.size(); i++) {
+            // 해당 Index에 값이 없으면 0.0으로 채워 배열 길이를 맞춥니다.
+            sortedValues.add(indexedValues.getOrDefault(i, 0.0));
+        }
+
+        // 5. DATA_STREAM JSON 형식으로 최종 반환합니다.
+        // List<Double>을 String으로 변환 시 공백을 제거하여 깔끔하게 만듭니다.
+        String dataValues = sortedValues.toString().replace(" ", "");
+
+        return String.format(
+                "{\"status\":\"succeed\",\"data\":%s,\"type\":\"DATA_STREAM\",\"serialNumber\":\"%s\"}",
+                dataValues, serialNumber
+        );
     }
 }

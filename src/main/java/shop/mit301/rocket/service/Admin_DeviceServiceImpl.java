@@ -30,6 +30,7 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
     private final Admin_UnitRepository unitRepository;
     private final Admin_EdgeGatewayRepository edgeGatewayRepository; // Edge 정보 직접 수정/조회용
     private final Admin_MeasurementDataRepository measurementDataRepository;
+    private final Admin_DeviceDataMeasureService measurementService;
 
     // Services & Handlers
     private final EdgeGatewayService edgeGatewayService;
@@ -212,14 +213,8 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
             String edgeInternalStatus = dataPayload.get("status").getAsString();
             String dataStatus = "SUCCESS".equalsIgnoreCase(edgeInternalStatus) ? "OK" : "ERROR_DATA";
 
-            // 🚨🚨🚨 수정된 핵심 로직: responseData 필드 대체 🚨🚨🚨
-            // Edge에서 온 하드웨어 상태 응답(dataPayload.toString()) 대신,
-            // 고객이 원하는 DATA_STREAM JSON을 responseData에 담습니다.
 
-            // ★★★ (임시 코드) 실제 DB/캐시에서 조회한 DATA_STREAM JSON으로 대체하세요. ★★★
-            String latestDataStream = "{\"status\":\"succeed\",\"data\":[500,300,10,5,3,122],\"type\":\"DATA_STREAM\",\"serialNumber\":\"" + serialNumber + "\"}";
-            // ★★★ (임시 코드 끝) ★★★
-
+            String latestDataStream = measurementService.getLatestDataStreamJson(serialNumber);
             // 4. DTO 구성 (성공 케이스)
             return Admin_DeviceStatusTestDTO.builder()
                     .deviceSerialNumber(serialNumber)

@@ -9,7 +9,9 @@ import shop.mit301.rocket.domain.DeviceData;
 import shop.mit301.rocket.domain.MeasurementData;
 import shop.mit301.rocket.domain.MeasurementDataId;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface Admin_MeasurementDataRepository extends JpaRepository<MeasurementData, MeasurementDataId> {
 //    @Transactional
@@ -18,5 +20,13 @@ public interface Admin_MeasurementDataRepository extends JpaRepository<Measureme
     @Transactional
     @Query("delete from MeasurementData m where m.devicedata.device.deviceSerialNumber = :serialNumber")
     void deleteByDeviceSerialNumber(@Param("serialNumber") String serialNumber);
+    // 이 메서드는 앞서 수정하여 정상입니다.
+    @Query("SELECT MAX(m.id.measurementdate) FROM MeasurementData m")
+    Optional<LocalDateTime> findLatestMeasurementTime();
+
+    // 🚨 수정: findById_MeasurementDate 대신 JPQL을 사용합니다.
+    @Query("SELECT m FROM MeasurementData m WHERE m.id.measurementdate = :date")
+    List<MeasurementData> findByMeasurementDate(@Param("date") LocalDateTime date);
+    // 참고: findById_MeasurementDate 대신 더 명확한 findByMeasurementDate로 이름을 변경했습니다.
 
 }
