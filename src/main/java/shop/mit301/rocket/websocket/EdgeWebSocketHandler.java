@@ -91,6 +91,8 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
         }
         String edgeSerial = query.split("=")[1];
 
+        System.out.println("⚠️ [DEBUG] 백엔드가 인식한 EDGE_SERIAL: [" + edgeSerial + "]");
+
         connectionRegistry.register(edgeSerial, session);
         edgeGatewayService.updateStatus(edgeSerial, "CONNECTED");
         System.out.println("엣지 연결됨: " + edgeSerial);

@@ -37,19 +37,21 @@ public class ConnectionRegistry {
      * Edge의 재연결 시 충돌을 방지합니다.
      */
     public void register(String edgeSerial, WebSocketSession newSession) {
-        // 기존 세션 확인 및 정리
-        WebSocketSession oldSession = sessionMap.get(edgeSerial);
+        // 1. 새로운 세션을 즉시 Map에 등록 (덮어쓰기)
+        //    이 시점에 getSession()은 newSession을 반환합니다.
+        WebSocketSession oldSession = sessionMap.put(edgeSerial, newSession);
+
+        // 2. 기존 세션이 있었다면 정리합니다.
         if (oldSession != null && oldSession.isOpen()) {
-            System.out.println("[Registry] 기존 세션 종료 처리: " + edgeSerial);
+            System.out.println("[Registry] 기존 세션 종료 처리(덮어쓰기): " + edgeSerial);
             try {
-                // 기존 세션을 닫아 Edge 애플리케이션이 새 세션으로 재연결하도록 유도
-                oldSession.close(CloseStatus.POLICY_VIOLATION);
+                // 기존 세션을 닫아 Edge의 재연결 흐름을 방해하지 않고 백엔드에서 정리만 합니다.
+                // CloseStatus.POLICY_VIOLATION 대신 CloseStatus.NORMAL을 사용하거나 CloseStatus 없이 닫습니다.
+                oldSession.close(CloseStatus.NORMAL);
             } catch (IOException e) {
                 System.err.println("[Registry] 기존 세션 종료 실패: " + e.getMessage());
             }
         }
-
-        sessionMap.put(edgeSerial, newSession);
     }
 
     /**
