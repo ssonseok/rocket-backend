@@ -6,34 +6,32 @@ import shop.mit301.rocket.dto.*;
 import java.util.List;
 
 public interface Admin_DeviceService {
-    //시리얼넘버 중복 체크
+
+    // 1. 장비 CRUD 관리
+
+    /** 장비 시리얼 중복 체크 */
     boolean checkDuplicateSerialNumber(String deviceSerialNumber);
-    // 장치 연결 테스트 (Edge 통해 실제 연결 확인 필요)
-    String testDeviceConnection(String ip, int port);
-    // 장치 등록
-    Admin_DeviceRegisterRespDTO registerDevice(Admin_DeviceRegisterReqDTO request);
-    Device getDevice(String serialNumber);
 
-    //장비 목록
-    List<Admin_DeviceListDTO> getDeviceList();
-    //장비 삭제
+    /** * 장비의 모든 정보(장치명, Edge IP/Port, 데이터 메타정보)를 단일 메서드로 수정
+     * (Admin_DeviceModifyReqDTO는 모든 수정 정보를 담고 있음)
+     */
+    String updateFullDeviceInfo(
+            Admin_DeviceModifyReqDTO request
+    );
+
+    /** 장비 삭제 */
     String deleteDevice(Admin_DeviceDeleteDTO dto);
-    //장비 수정
-    String modifyDevice(Admin_DeviceModifyReqDTO dto);
 
 
-    //장비 상태보기
-    Admin_DeviceStatusRespDTO getDeviceStatus(String serialNumber);
-    //Service 패턴에 맞춰 String 반환으로 변경
-    String testDeviceConnection(String serialNumber);
-    //Controller가 테스트 성공 후 상세 결과를 조회할 메서드
-    Admin_DeviceStatusTestDTO getLatestTestResult(String serialNumber);
+    // 2. 장비 조회 (Read)
 
+    /** 장비 목록 조회 (Admin UI 목록 화면용) */
+    List<Admin_DeviceListDTO> getDeviceList();
 
-    //수정화면에서 필요한 조회
-    Admin_DeviceDetailDTO getDeviceDetail(String deviceSerialNumber);
+    /** 장비 상세 정보 조회 (수정 화면 로딩용) */
+    Admin_DeviceDetailRespDTO getDeviceDetail(String deviceSerialNumber);
 
-    //실제 엣지와 연결작업
-    //엣지에서 수신된 초기 센서 데이터 등록
-    //List<DeviceDataDTO> registerDeviceDataFromEdge(String deviceSerialNumber, List<DeviceDataDTO> dataList);
+    /** 장비 상태 보기 (응답 데이터 이상 유무, 응답 데이터, 응답 속도 조회) */
+    Admin_DeviceStatusTestDTO getDeviceStatus(String serialNumber);
+    // Admin_DeviceStatusRespDTO는 아직 정의하지 않았지만, 상태 정보를 담을 응답 DTO가 필요함
 }

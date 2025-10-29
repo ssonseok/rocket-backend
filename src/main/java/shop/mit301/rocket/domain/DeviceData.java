@@ -11,7 +11,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class DeviceData {
 
     @Id
@@ -19,15 +19,19 @@ public class DeviceData {
     @Column(nullable = false, name = "device_data_id")
     private int devicedataid;
 
+    @Column(nullable = false, name = "data_index")
+    private int dataIndex; //JSON 배열 순서(0,1,,...)
+
+    @Column(nullable = false, name = "is_configured")
+    private boolean isConfigured;
+
+
     @Column(nullable = false)
     private double min;
-
     @Column(nullable = false)
     private double max;
-
     @Column(nullable = false)
     private double reference_value;
-
     @Column(nullable = false, length = 255)
     private String name;
 
@@ -52,4 +56,5 @@ public class DeviceData {
         this.name = name;
         this.unit = unit;
     }
+
 }

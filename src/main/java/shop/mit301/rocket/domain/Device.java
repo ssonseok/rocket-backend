@@ -13,26 +13,24 @@ import org.hibernate.annotations.Type;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class Device {
 
-
     @Id
-    @Column(nullable = false, length = 8, columnDefinition = "CHAR(8)", name = "device_serial_number")
-    private String deviceSerialNumber;
+    @Column(nullable = false, length = 255, columnDefinition = "CHAR(255)", name = "device_serial_number")
+    private String deviceSerialNumber; // 장비 고유 시리얼 (예: device1)
 
-    @Column(nullable = false)
-    private int port;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "edge_serial", nullable = false)
+    private EdgeGateway edgeGateway;
 
-    @Column(nullable = false, length = 15, columnDefinition = "CHAR(15)")
-    private String ip;
+
 
     @Column(nullable = false, length = 255)
-    private String name;
+    private String name;//장치명
 
     @Column(nullable = false)
     private LocalDateTime regist_date;
-
     @Column(nullable = true)
     private LocalDateTime modify_date;
 
@@ -47,15 +45,13 @@ public class Device {
     }
 
     @Builder
-    public Device(String deviceSerialNumber, int port, String ip, String name, LocalDateTime regist_date, LocalDateTime modify_date, List<DeviceData> device_data_list) {
+    public Device(String deviceSerialNumber, EdgeGateway edgeGateway,String name, LocalDateTime regist_date, LocalDateTime modify_date, List<DeviceData> device_data_list) {
         this.deviceSerialNumber = deviceSerialNumber;
-        this.port = port;
-        this.ip = ip;
+        this.edgeGateway = edgeGateway;
         this.name = name;
         this.regist_date = regist_date;
         this.modify_date = modify_date;
         this.device_data_list = device_data_list;
-        this.is_data_configured = false; // 기본값
-    }
-
+        this.is_data_configured = false;
+    }//패스포트 제거 상태
 }

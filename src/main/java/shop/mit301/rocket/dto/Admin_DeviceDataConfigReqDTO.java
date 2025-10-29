@@ -5,15 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Admin_DeviceDetailDTO {
-    private String deviceSerialNumber;
+public class Admin_DeviceDataConfigReqDTO {
+    private int streamIndex;
     private String name;
-    private String ip;
-    private int port;
-    private List<Admin_DeviceDataRegisterRespDTO> deviceDataList;
+    private String unitName;
+    private double minValue;
+    private double maxValue;
+    private double standardValue;
 }

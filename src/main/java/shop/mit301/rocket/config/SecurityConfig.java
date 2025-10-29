@@ -2,6 +2,7 @@ package shop.mit301.rocket.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -33,9 +34,11 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/login", "/api/findId", "/api/changePw", "/api/changePwLink").permitAll() // ✅ 로그인 등은 허용
                         .requestMatchers("/ws/**").permitAll()    // WebSocket
-                        .requestMatchers("/api/**").permitAll()   // 전체 API 인증 잠시 제거
+                        .requestMatchers("/api/**").permitAll()// 전체 API 인증 잠시 제거
+                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         //.anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -50,6 +53,7 @@ public class SecurityConfig {
                 ,
                 "http://192.168.1.119",
                 "http://192.168.1.11")
+
         );
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

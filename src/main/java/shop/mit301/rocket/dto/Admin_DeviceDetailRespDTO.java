@@ -11,10 +11,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Admin_DeviceModifyReqDTO {
+public class Admin_DeviceDetailRespDTO {
     private String deviceSerialNumber;
-    private String newName;
-    private String newIpAddress;
-    private Integer newPort;
-    private List<Admin_DeviceDataModifyReqDTO> dataStreams;
+    private String name;
+    private String edgeSerial;
+    private String edgeIp;
+    private int edgePort;
+    private List<Admin_DeviceDataDetailRespDTO> deviceDataList;
 }
