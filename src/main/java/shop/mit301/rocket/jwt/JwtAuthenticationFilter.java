@@ -33,6 +33,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
 
+        System.out.println("Authorization Header: " + authHeader);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            System.out.println("JWT Token: " + token);
+
+            if (jwtUtil.validateToken(token)) {
+                String userId = jwtUtil.getUserIdFromToken(token);
+                System.out.println("Token UserId: " + userId);
+
+                User user = userRepository.findByUserid(userId).orElse(null);
+                if (user == null) {
+                    System.out.println("사용자 없음");
+                } else {
+                    System.out.println("사용자 인증 성공: " + user.getName());
+                }
+            } else {
+                System.out.println("JWT 검증 실패");
+            }
+        }
+
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             if (jwtUtil.validateToken(token)) {

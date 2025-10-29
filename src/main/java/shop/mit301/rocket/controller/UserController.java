@@ -31,8 +31,6 @@ public class UserController {
     private final UserServiceImpl userService;
     private final PasswordResetTokenRepository tokenRepository;
     private final JwtUtil jwtUtil;
-    private final BCryptPasswordEncoder passwordEncoder;
-    private final JwtTokenProvider jwtTokenProvider;
 
     @PostMapping("/findId")
     public ResponseEntity<Map<String, String>> findIdByEmail(@RequestBody Map<String, String> request) {
@@ -137,7 +135,6 @@ public class UserController {
         String password = request.getPw();
 
         Optional<User> optionalUser = userRepository.findByUserid(userId);
-
         Map<String, String> response = new HashMap<>();
 
         if (optionalUser.isEmpty()) {
@@ -154,44 +151,13 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 
-        String token = jwtUtil.generateToken(user.getUserid());
+        // ✅ user.getEmail() 추가
+        String token = jwtUtil.generateToken(user.getUserid(), user.getEmail());
 
         response.put("status", "success");
         response.put("token", token);
         response.put("permission", String.valueOf(user.getPermission()));
 
         return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/user/graph-layout")
-    public ResponseEntity<?> getGraphLayout(@RequestHeader("Authorization") String token) {
-        String userId = jwtTokenProvider.getUserIdFromToken(token);
-        return userRepository.findByUserid(userId)
-                .map(layout -> ResponseEntity.ok(Map.of(
-                        "activeGraphs", new Gson().fromJson(layout.getGraphData(), List.class)
-                )))
-                .orElse(ResponseEntity.ok(Map.of("activeGraphs", List.of())));
-    }
-
-    @PostMapping("/user/graph-layout")
-    public ResponseEntity<?> saveGraphLayout(@RequestHeader("Authorization") String token,
-                                             @RequestBody Map<String, Object> body) {
-        String userId = jwtTokenProvider.getUserIdFromToken(token);  // Long 대신 String
-
-        List<?> activeGraphs = (List<?>) body.get("activeGraphs");
-        String json = new Gson().toJson(activeGraphs);
-
-        User layout = userRepository.findByUserid(userId)
-                .map(existing -> existing.toBuilder()
-                        .graphData(json)
-                        .build())
-                .orElse(User.builder()
-                        .userid(userId)
-                        .graphData(json)
-                        .build());
-
-        userRepository.save(layout);
-
-        return ResponseEntity.ok().build();
     }
 }

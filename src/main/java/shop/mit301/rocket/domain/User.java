@@ -39,5 +39,7 @@ public class User {
     private PasswordResetToken passwordResetToken;
 
     @Lob
+    @Setter
+    @Column(columnDefinition = "TEXT")
     private String graphData;
 }

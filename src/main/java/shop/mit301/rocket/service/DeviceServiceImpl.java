@@ -2,21 +2,17 @@ package shop.mit301.rocket.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import shop.mit301.rocket.domain.DeviceData;
-import shop.mit301.rocket.domain.MeasurementData;
-import shop.mit301.rocket.domain.MeasurementDataId;
-import shop.mit301.rocket.domain.PredictionData;
+import shop.mit301.rocket.domain.*;
 import shop.mit301.rocket.dto.HistoryRequestDTO;
 import shop.mit301.rocket.dto.HistoryResponseDTO;
 import shop.mit301.rocket.dto.SensorResponseDTO;
-import shop.mit301.rocket.repository.DeviceDataRepository;
-import shop.mit301.rocket.repository.MeasurementDataRepository;
-import shop.mit301.rocket.repository.PredictionDataRepository;
-import shop.mit301.rocket.repository.UnitRepository;
+import shop.mit301.rocket.repository.*;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -34,6 +30,11 @@ public class DeviceServiceImpl implements DeviceService {
     private final UnitRepository unitRepository;
     private final DeviceDataRepository deviceDataRepository;
     private final RestTemplate restTemplate;
+    private final JavaMailSender mailSender;
+    private final UserGraphLayoutRepository userGraphLayoutRepository;
+
+    @Value("${spring.mail.username}")
+    private String fromAddress;
 
     private LocalDateTime convertToLocalDateTime(Object periodObj, String unit) {
         if (periodObj instanceof java.sql.Date) {
@@ -280,5 +281,52 @@ public class DeviceServiceImpl implements DeviceService {
                         .timestamp(LocalDateTime.now().toString())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public void sendAlert(String toEmail, String sensorName, double currentValue, double referenceValue) {
+        String subject = "🚨 센서 경고: " + sensorName;
+        String text = String.format(
+                "센서 [%s]의 측정값이 기준값을 초과했습니다.\n\n현재값: %.2f\n기준값: %.2f\n\n조치가 필요합니다.",
+                sensorName, currentValue, referenceValue
+        );
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(toEmail);
+        message.setSubject(subject);
+        message.setText(text);
+
+        mailSender.send(message);
+        System.out.println("📧 이메일 알림 전송 완료: " + toEmail);
+    }
+
+    @Override
+    public UserGraphLayout saveOrUpdateLayout(String userId, String dragId, int left, int top, int width, int height) {
+        UserGraphLayout layout = userGraphLayoutRepository.findByUserIdAndDragId(userId, dragId)
+                .map(existing -> UserGraphLayout.builder()
+                        .id(existing.getId()) // 기존 ID 유지
+                        .userId(userId)
+                        .dragId(dragId)
+                        .posLeft(left)
+                        .posTop(top)
+                        .width(width)
+                        .height(height)
+                        .build())
+                .orElse(UserGraphLayout.builder()
+                        .userId(userId)
+                        .dragId(dragId)
+                        .posLeft(left)
+                        .posTop(top)
+                        .width(width)
+                        .height(height)
+                        .build());
+
+        return userGraphLayoutRepository.save(layout);
+    }
+
+    @Override
+    public List<UserGraphLayout> getLayouts(String userId) {
+        return userGraphLayoutRepository.findByUserId(userId);
     }
 }
