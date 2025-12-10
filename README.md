@@ -3,7 +3,7 @@
 **백엔드(Spring Boot) + 엣지(라즈베리파이) + UI(HTML·CSS·JS)**  
 **Java 17 / Spring Boot / MySQL**  
 프론트 레포지토리: https://github.com/ssonseok/rocket-frontend  
-ppt : [에너지 관리 시스템.pptx](https://github.com/user-attachments/files/23705071/default.pptx)
+ppt : [에너지 관리 시스템a.pptx](https://github.com/user-attachments/files/24071083/a.pptx)
 
 ---
 
