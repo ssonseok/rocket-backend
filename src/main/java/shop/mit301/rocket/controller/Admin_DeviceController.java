@@ -116,13 +116,13 @@ public class Admin_DeviceController {
 
     @Operation(summary = "장비 상태 보기", description = "장치명, 시리얼넘버, 통신 테스트 결과(응답 데이터, 속도)를 조회합니다.")
     @GetMapping("/status/{serialNumber}")
-// 1. ⚠️ 수정: 메서드 반환 타입 (ResponseEntity 제네릭)을 TestDTO로 변경
+// 메서드 반환 타입 (ResponseEntity 제네릭)을 TestDTO로 변경
     public ResponseEntity<Admin_DeviceStatusTestDTO> getDeviceStatus(@PathVariable String serialNumber) {
         try {
-            // 2. ⚠️ 수정: 지역 변수 타입을 TestDTO로 변경
+            // 지역 변수 타입을 TestDTO로 변경
             Admin_DeviceStatusTestDTO status = deviceService.getDeviceStatus(serialNumber);
 
-            // 3. ⚠️ 수정: ResponseEntity.ok()의 반환 타입이 TestDTO를 따르도록 자동 해결됨
+            // ResponseEntity.ok()의 반환 타입이 TestDTO를 따르도록 자동 해결됨
             return ResponseEntity.ok(status);
         } catch (RuntimeException e) {
             // ... (로그 및 오류 처리 로직 유지) ...

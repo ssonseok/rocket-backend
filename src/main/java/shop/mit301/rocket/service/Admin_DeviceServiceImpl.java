@@ -205,7 +205,6 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
             // 3. 반환된 최종 JSON 파싱
             JsonObject finalResultJson = JsonParser.parseString(resultJsonString).getAsJsonObject();
 
-            // ... (이하 응답 속도 추출 로직 유지) ...
             long responseTimeMs = finalResultJson.get("responseTimeMs").getAsLong();
             JsonObject dataPayload = finalResultJson.getAsJsonObject("dataPayload");
 
@@ -219,28 +218,22 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
             return Admin_DeviceStatusTestDTO.builder()
                     .deviceSerialNumber(serialNumber)
                     .name(device.getName())
-                    .edgeSerial(responseEdgeSerial) // ⬅️ 응답 DTO 필드에는 DB에서 가져온 값을 담습니다.
+                    .edgeSerial(responseEdgeSerial) //  응답 DTO 필드에는 DB에서 가져온 값을 담습니다.
                     .portPath(String.valueOf(device.getEdgeGateway().getPort()))
                     .status("SUCCESS")
                     .responseTimeMs(responseTimeMs)
                     .dataStatus(dataStatus)
-                    .responseData(latestDataStream) // ⬅️ DATA_STREAM JSON으로 대체
+                    .responseData(latestDataStream) // DATA_STREAM JSON으로 대체
                     .build();
 
         } catch (IllegalStateException e) {
-            // ... (이하 예외 처리 로직 유지) ...
             return buildFailureDTO(device, "FAIL", "DISCONNECTED", "Edge Gateway와의 WebSocket 연결이 활성화되지 않았습니다.");
         } catch (TimeoutException e) {
-            // ... (이하 예외 처리 로직 유지) ...
             return buildFailureDTO(device, "FAIL", "TIMEOUT", "엣지 응답 시간 초과 (5초).");
         } catch (Exception e) {
-            // ... (이하 예외 처리 로직 유지) ...
             return buildFailureDTO(device, "FAIL", "INTERNAL_ERROR", "테스트 중 백엔드 오류: " + e.getMessage());
         }
     }
-
-
-// ... (기존 getDeviceStatus 메서드 위치에 새로운 메서드 구현) ...
 
 
 // --------------------------------------------------------------------------------
@@ -260,7 +253,7 @@ public class Admin_DeviceServiceImpl implements Admin_DeviceService {
                 .deviceSerialNumber(device.getDeviceSerialNumber())
                 .name(device.getName())
                 .edgeSerial(device.getEdgeGateway().getEdgeSerial())
-                // ⚠️ 수정 완료: Integer -> String 변환 적용
+                //  수정 완료: Integer -> String 변환 적용
                 .portPath(String.valueOf(device.getEdgeGateway().getPort()))
                 .responseTimeMs(0) // 실패 시 0ms
                 .status(status)

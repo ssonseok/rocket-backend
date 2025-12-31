@@ -91,7 +91,7 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
         }
         String edgeSerial = query.split("=")[1];
 
-        System.out.println("⚠️ [DEBUG] 백엔드가 인식한 EDGE_SERIAL: [" + edgeSerial + "]");
+        System.out.println("백엔드가 인식한 EDGE_SERIAL: [" + edgeSerial + "]");
 
         connectionRegistry.register(edgeSerial, session);
         edgeGatewayService.updateStatus(edgeSerial, "CONNECTED");
@@ -137,7 +137,7 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
 
         // 5. 응답 수신 시간 및 응답속도 계산
         long endTime = System.currentTimeMillis();
-        long responseTimeMs = endTime - startTime; // 👈 응답 속도
+        long responseTimeMs = endTime - startTime; //응답 속도
 
         // 6. 응답 JSON에 응답 속도 정보 및 성공 유무 추가
         JsonObject responseJson = JsonParser.parseString(responsePayload).getAsJsonObject();
@@ -187,12 +187,12 @@ public class EdgeWebSocketHandler extends TextWebSocketHandler {
                     try {
                         measurementService.saveMeasurement(deviceSerial, dataValues);
                     } catch (Exception e) {
-                        System.err.println("🚨 측정 데이터 저장 중 오류 발생: " + e.getMessage());
+                        System.err.println("측정 데이터 저장 중 오류 발생: " + e.getMessage());
                         // 중요한 데이터이므로 예외가 발생하면 반드시 로그를 남깁니다.
                     }
 
                 } else {
-                    System.err.println("🚨 DATA_STREAM에 필수 필드 누락: " + json);
+                    System.err.println("DATA_STREAM에 필수 필드 누락: " + json);
                 }
                 break;
 

@@ -110,7 +110,7 @@ public class Admin_DeviceRegistrationServiceImpl implements Admin_DeviceRegistra
                     .min(dataReq.getMinValue())
                     .max(dataReq.getMaxValue())
                     .reference_value(dataReq.getStandardValue())
-                    // 🚨🚨 [수정 1] DeviceData: 설정 완료 플래그를 TRUE로 설정 🚨🚨
+                    // DeviceData: 설정 완료 플래그를 TRUE로 설정
                     .isConfigured(true)
                     .build();
 

@@ -40,14 +40,13 @@ public class ConnectionRegistry {
     public void register(String edgeSerial, WebSocketSession newSession) {
         WebSocketSession oldSession = sessionMap.put(edgeSerial, newSession);
 
-        // 🚨 역방향 맵에 등록
+        // 역방향 맵에 등록
         edgeSerialMap.put(newSession.getId(), edgeSerial);
 
         if (oldSession != null) {
             // 기존 세션이 있다면 역방향 맵에서도 제거 (덮어쓰기)
             edgeSerialMap.remove(oldSession.getId());
             if (oldSession.isOpen()) {
-                // ... (기존 oldSession.close 로직)
             }
         }
     }
@@ -63,13 +62,12 @@ public class ConnectionRegistry {
      * 세션이 닫혔을 때 호출됩니다. 세션 맵에서 세션을 제거하고 Edge Serial을 반환합니다.
      */
     public String unregister(WebSocketSession session) {
-        // 🚨 개선된 로직: O(1)의 성능으로 Edge Serial을 즉시 찾음
+        // 개선된 로직: O(1)의 성능으로 Edge Serial을 즉시 찾음
         String edgeSerial = edgeSerialMap.remove(session.getId());
 
         if (edgeSerial != null) {
             // 세션 맵에서도 제거
             sessionMap.remove(edgeSerial);
-            // ... (대기 중인 CompletableFuture 처리 로직 추가 가능 - 현재 생략)
         }
 
         return edgeSerial;

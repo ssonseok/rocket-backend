@@ -47,7 +47,7 @@ public class Admin_DeviceDataMeasureServiceImpl implements Admin_DeviceDataMeasu
                 .collect(Collectors.toMap(DeviceData::getDataIndex, data -> data));
 
         // 2. 수신된 측정값(values)을 반복하면서 MeasurementData를 생성 및 수집합니다.
-        // 💡 PK 충돌 방지 및 일관성 유지를 위해 시간은 루프 밖에서 한 번만 생성합니다.
+        //  PK 충돌 방지 및 일관성 유지를 위해 시간은 루프 밖에서 한 번만 생성합니다.
         LocalDateTime now = LocalDateTime.now();
         List<MeasurementData> measurements = new ArrayList<>(values.size());
 
@@ -63,7 +63,7 @@ public class Admin_DeviceDataMeasureServiceImpl implements Admin_DeviceDataMeasu
             }
 
             // 3. MeasurementData 엔티티 생성
-            // 🚨 [수정됨] 복합 키 구조에 맞춰 MeasurementDataId 객체를 생성하여 .id()에 전달
+            // 복합 키 구조에 맞춰 MeasurementDataId 객체를 생성하여 .id()에 전달
             MeasurementData measurement = MeasurementData.builder()
                     .id(new MeasurementDataId(now, deviceData.getDevicedataid())) // 복합키 (시간 + DeviceData PK)
                     .measurementvalue(value) // measurementvalue 필드 사용
@@ -73,7 +73,7 @@ public class Admin_DeviceDataMeasureServiceImpl implements Admin_DeviceDataMeasu
             measurements.add(measurement);
         }
 
-        // 4. 💡 [수정됨] 성능 최적화를 위해 saveAll()을 사용하여 배치 삽입을 유도합니다.
+        // 4. 성능 최적화를 위해 saveAll()을 사용하여 배치 삽입을 유도합니다.
         if (!measurements.isEmpty()) {
             measurementDataRepository.saveAll(measurements);
         }
@@ -107,7 +107,7 @@ public class Admin_DeviceDataMeasureServiceImpl implements Admin_DeviceDataMeasu
 
         // Data Index를 키로, 측정값을 값으로 하는 Map을 생성합니다.
         Map<Integer, Double> indexedValues = latestMeasurements.stream()
-                // 🚨 중요: 조회된 데이터가 현재 장비 serialNumber에 해당하는지 확인
+                //  조회된 데이터가 현재 장비 serialNumber에 해당하는지 확인
                 .filter(m -> m.getDevicedata().getDevice().getDeviceSerialNumber().equals(serialNumber))
                 .collect(Collectors.toMap(
                         m -> m.getDevicedata().getDataIndex(),

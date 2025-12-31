@@ -16,7 +16,6 @@ public class Admin_DeviceRegisterRespDTO {
     private String deviceSerialNumber;
     private String name;
 
-    // 💡 [제거] ip/port 제거
     // private String ip;
     // private int port;
 
