@@ -63,7 +63,7 @@ ppt : [에너지 관리 시스템a.pptx](https://github.com/user-attachments/fil
 ---
 ## 👤 My Role
 
-본 프로젝트에서 **관리자(Admin) 영역의 핵심 기능 개발**을 담당했습니다.  
+본 프로젝트에서 **백엔드와 UI는 관리자(Admin) 영역의 기능들과 Egde**를 담당했습니다.  
 
 ### 🔐 관리자 회원 관리
 - 관리자 계정 등록 / 목록 조회 / 수정 / 삭제(CRUD) 기능 구현 
