@@ -61,3 +61,24 @@ ppt : [에너지 관리 시스템a.pptx](https://github.com/user-attachments/fil
 - 장비 / Edge / 측정값 각각 테이블 관리
 
 ---
+## 👤 My Role
+
+본 프로젝트에서 **관리자(Admin) 영역의 핵심 기능 개발**을 담당했습니다.  
+
+### 🔐 관리자 회원 관리
+- 관리자 계정 등록 / 목록 조회 / 수정 / 삭제(CRUD) 기능 구현 
+- Spring Boot 기반 REST API 설계 및 구현
+- MySQL 연동을 통한 관리자 계정 데이터 관리
+- DTO 기반 구조로 Controller / Service / Repository 계층 분리
+- Fetch API를 활용한 관리자 관리 UI 연동
+
+### 🔌 장비 관리
+- 장비 등록 및 장비 목록 조회 기능 구현
+- 시리얼 번호 기반 장비 등록 로직 구현
+- Edge(WebSocket) 연결 여부 검증 후 장비 등록 처리
+- 실제 연결 가능한 장비만 등록되도록 관리 로직 설계
+
+### 🧪 장비 등록 테스트
+- Backend ↔ Edge 간 WebSocket 연결 테스트 기능 구현
+- 테스트 요청 시 Edge 응답 여부로 장비 상태 판단
+- 실시간 통신 상태 기반 검증 기능 구현
